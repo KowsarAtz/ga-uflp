@@ -6,7 +6,6 @@ def calculateFitness(population, individualIndex, facilityToCustomerCost, potent
     fitness = 0
     for customerIndex in range(facilityToCustomerCost.shape[1]):
         openFacilityCosts = facilityToCustomerCost[openFacilites, customerIndex]
-        #chosenFacilityIndex = np.where(openFacilityCosts = np.min(openFacilityCosts))
         fitness += np.min(openFacilityCosts)
     for openFacilityIndex in openFacilites:
         fitness += potentialSitesFixedCosts[openFacilityIndex]
@@ -54,7 +53,6 @@ def bestIndividualPlan(population, individualIndex, facilityToCustomerCost):
     plan = []
     for customerIndex in range(facilityToCustomerCost.shape[1]):
         openFacilityCosts = facilityToCustomerCost[openFacilites, customerIndex]
-        # print(openFacilityCosts)
         chosenFacilityIndex = np.where(openFacilityCosts == np.min(openFacilityCosts))[0][0]
         plan += [openFacilites[chosenFacilityIndex]]
     return plan

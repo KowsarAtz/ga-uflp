@@ -1,9 +1,11 @@
 import numpy as np
 from random import shuffle
+from sys import exit
 
 def calculateScore(population, individualIndex, facilityToCustomerCost, potentialSitesFixedCosts):
     openFacilites = np.where(population[individualIndex, :] == True)[0]
     score = 0
+    if openFacilites.shape[0] == 0: return np.finfo(np.float64).max
     for customerIndex in range(facilityToCustomerCost.shape[1]):
         openFacilityCosts = facilityToCustomerCost[openFacilites, customerIndex]
         score += np.min(openFacilityCosts)

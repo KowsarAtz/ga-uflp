@@ -2,6 +2,7 @@ import numpy as np
 from gaUtils import *
 from settings import *
 from timeit import default_timer
+from math import ceil
 
 # Optimals
 f = open(ORLIB_PATH+DATASET_FILE+'.txt.opt', 'r')
@@ -46,20 +47,24 @@ rank = np.empty((population.shape[0], ))
 bestIndividual = None
 bestIndividualRepeatedTime = 0
 bestPlanSoFar = []
+nRepeat = ceil(10 * (totalCustomers * totalPotentialSites) ** 0.5)
+generation = 1
 
-for generation in range(MAX_GENERATIONS):
+while True:
+    print('\rgeneration number %d               ' % generation, end='')
     updateScore(population, ELITE_SIZE, score, facilityToCustomerCost, potentialSitesFixedCosts)
     (population, score) = sortAll(population, score)
     if score[0] != bestIndividual:
         bestIndividualRepeatedTime = 0
-    bestIndividual = score[0]
+        bestPlanSoFar = bestIndividualPlan(population, 0, facilityToCustomerCost)
+        bestIndividual = score[0]
     bestIndividualRepeatedTime += 1
-    bestPlanSoFar = bestIndividualPlan(population, 0, facilityToCustomerCost)
-    
+    if bestIndividualRepeatedTime > nRepeat or generation >= MAX_GENERATIONS: break
     updateRank(score, rank)
     punishDuplicates(population, rank)
     punishElites(rank, ELITE_SIZE)
     replaceWeaks(population, POPULATION_SIZE - ELITE_SIZE, rank, MUTATION_RATE, CROSSOVER_RATE)
+    generation += 1
 
 # End Timing
 endTimeit = default_timer()
@@ -75,14 +80,15 @@ def compareBestFoundPlanToOptimalPlan(optimal, bestFound):
 
 compareToOptimal = compareBestFoundPlanToOptimalPlan(optimals, bestPlanSoFar)
 
-print('dataset name:',DATASET_FILE)
-print('total generations of', MAX_GENERATIONS)
+print('\rdataset name:',DATASET_FILE)
+print('total generations of', generation)
 print('best individual score',bestIndividual,\
       'repeated for last',bestIndividualRepeatedTime,'times')
 if False not in compareToOptimal:
     print('REACHED OPTIMAL OF', optimalCost)
 else:
-    print('DID NOT REACHED OPTIMAL OF', optimalCost)
+    print('DID NOT REACHED OPTIMAL OF', optimalCost, "|",\
+          (bestIndividual - optimalCost) * 100 / optimalCost,"% ERROR")
 print('total elapsed time:', endTimeit - startTimeit)
 assignedFacilitiesString = ''
 for f in bestPlanSoFar:

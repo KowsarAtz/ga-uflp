@@ -50,9 +50,11 @@ bestPlanSoFar = []
 nRepeat = ceil(10 * (totalCustomers * totalPotentialSites) ** 0.5)
 generation = 1
 
+for individualIndex in range(population.shape[0]):
+    score[individualIndex] = calculateScore(population, individualIndex, facilityToCustomerCost, potentialSitesFixedCosts)
+
 while True:
     print('\rgeneration number %d               ' % generation, end='')
-    updateScore(population, ELITE_SIZE, score, facilityToCustomerCost, potentialSitesFixedCosts)
     (population, score) = sortAll(population, score)
     if score[0] != bestIndividual:
         bestIndividualRepeatedTime = 0
@@ -63,7 +65,7 @@ while True:
     updateRank(score, rank)
     punishDuplicates(population, rank)
     punishElites(rank, ELITE_SIZE)
-    replaceWeaks(population, POPULATION_SIZE - ELITE_SIZE, rank, MUTATION_RATE, CROSSOVER_RATE)
+    replaceWeaks(population, POPULATION_SIZE - ELITE_SIZE, rank, score, MUTATION_RATE, CROSSOVER_RATE, facilityToCustomerCost, potentialSitesFixedCosts)
     generation += 1
 
 # End Timing

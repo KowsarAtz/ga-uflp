@@ -13,10 +13,6 @@ def calculateScore(population, individualIndex, facilityToCustomerCost, potentia
         score += potentialSitesFixedCosts[openFacilityIndex]
     return score
         
-def updateScore(population, elites, score, facilityToCustomerCost, potentialSitesFixedCosts):
-    for individualIndex in range(population.shape[0]):
-        score[individualIndex] = calculateScore(population, individualIndex, facilityToCustomerCost, potentialSitesFixedCosts)
-        
 def sortAll(population, score):
     sortArgs = score.argsort()
     population = population[sortArgs]
@@ -58,12 +54,13 @@ def rouletteWheelParentSelection(rank):
             parentB = individualIndex
             return (parentA, parentB)
 
-def replaceWeaks(population,totalOffsprings, rank, mutationRate, crossoverRate):
+def replaceWeaks(population,totalOffsprings, rank, score, mutationRate, crossoverRate, facilityToCustomerCost, potentialSitesFixedCosts):
     for i in range(totalOffsprings):
         parentAIndex, parentBIndex = rouletteWheelParentSelection(rank)
         offspring = uniformCrossoverOffspring(parentAIndex, parentBIndex, population, crossoverRate)
         mutateOffspring(offspring, mutationRate)
         population[totalOffsprings+i, :] = np.transpose(offspring)
+        score[totalOffsprings+i] = calculateScore(population, totalOffsprings+i, facilityToCustomerCost, potentialSitesFixedCosts)
 
 def bestIndividualPlan(population, individualIndex, facilityToCustomerCost):
     openFacilites = np.where(population[individualIndex, :] == True)[0]

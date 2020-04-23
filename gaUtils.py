@@ -38,14 +38,29 @@ def mutateOffspring(offspring, mutationProbability):
             else:
                 offspring[i] = True
 
-def replaceWeaks(population,totalOffsprings):
-    parentIndexes = list(range(totalOffsprings))
-    shuffle(parentIndexes)
+def rouletteWheelParentSelection(rank):
+    rankSum = np.sum(rank)
+    rand = np.random.uniform(low=0, high=rankSum)
+    randOpposite = (rand + rankSum//2) % rankSum
+    partialSum = 0
+    parentA, parentB = None, None
+    for individualIndex in range(rank.shape[0]):
+        partialSum += rank[individualIndex]
+        if partialSum > rand:
+            parentA = individualIndex
+            break
+    partialSum = 0
+    for individualIndex in range(rank.shape[0]):
+        partialSum += rank[individualIndex]
+        if partialSum > randOpposite:
+            parentB = individualIndex
+            return (parentA, parentB)
+
+def replaceWeaks(population,totalOffsprings, rank, mutationRate, crossoverRate):
     for i in range(totalOffsprings):
-        parentAIndex = parentIndexes[i%totalOffsprings]
-        parentBIndex = parentIndexes[(i+1)%totalOffsprings]
-        offspring = uniformCrossoverOffspring(parentAIndex, parentBIndex, population, 0.3)
-        mutateOffspring(offspring, 0.05)
+        parentAIndex, parentBIndex = rouletteWheelParentSelection(rank)
+        offspring = uniformCrossoverOffspring(parentAIndex, parentBIndex, population, crossoverRate)
+        mutateOffspring(offspring, mutationRate)
         population[totalOffsprings+i, :] = np.transpose(offspring)
 
 def bestIndividualPlan(population, individualIndex, facilityToCustomerCost):
@@ -57,8 +72,25 @@ def bestIndividualPlan(population, individualIndex, facilityToCustomerCost):
         plan += [openFacilites[chosenFacilityIndex]]
     return plan
 
-def punishDuplicates(population, score):
+def punishDuplicates(population, rank):
     _, index = np.unique(population, return_index=True, axis=0)
     for individualIndex in range(population.shape[0]):
         if individualIndex not in index:
-            score[individualIndex] = np.finfo(np.float64).max
+            rank[individualIndex] = 0
+            
+def punishElites(rank, elites):
+    averageRank = np.average(rank)
+    for individualIndex in range(elites):
+        if rank[individualIndex] > averageRank:
+            rank[individualIndex] -= averageRank
+        else:
+            rank[individualIndex] = 0
+            
+def updateRank(score, rank):
+    rank[0] = rank.shape[0]
+    for individualIndex in range(1,rank.shape[0]):
+        if score[individualIndex] == score[individualIndex-1]:
+            rank[individualIndex] = rank[individualIndex-1]
+        else:
+            rank[individualIndex] = rank[individualIndex-1]-1
+    rank -= (np.min(rank) - 1)

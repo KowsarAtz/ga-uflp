@@ -42,7 +42,7 @@ for i in range(POPULATION_SIZE):
 
 # GA Main Loop
 score = np.empty((population.shape[0], ))
-rank = np.empty((population.shape[0], ), np.int8)
+rank = np.empty((population.shape[0], ))
 bestIndividual = None
 bestIndividualRepeatedTime = 0
 bestPlanSoFar = []
@@ -56,10 +56,10 @@ for generation in range(MAX_GENERATIONS):
     bestIndividualRepeatedTime += 1
     bestPlanSoFar = bestIndividualPlan(population, 0, facilityToCustomerCost)
     
-    #bunch of stuff goes here
-    punishDuplicates(population, score)
-    
-    offsprings = replaceWeaks(population, POPULATION_SIZE - ELITE_SIZE)
+    updateRank(score, rank)
+    punishDuplicates(population, rank)
+    punishElites(rank, ELITE_SIZE)
+    replaceWeaks(population, POPULATION_SIZE - ELITE_SIZE, rank, MUTATION_RATE, CROSSOVER_RATE)
 
 # End Timing
 endTimeit = default_timer()

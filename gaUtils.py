@@ -1,25 +1,25 @@
 import numpy as np
 from random import shuffle
 
-def calculateFitness(population, individualIndex, facilityToCustomerCost, potentialSitesFixedCosts):
+def calculateScore(population, individualIndex, facilityToCustomerCost, potentialSitesFixedCosts):
     openFacilites = np.where(population[individualIndex, :] == True)[0]
-    fitness = 0
+    score = 0
     for customerIndex in range(facilityToCustomerCost.shape[1]):
         openFacilityCosts = facilityToCustomerCost[openFacilites, customerIndex]
-        fitness += np.min(openFacilityCosts)
+        score += np.min(openFacilityCosts)
     for openFacilityIndex in openFacilites:
-        fitness += potentialSitesFixedCosts[openFacilityIndex]
-    return fitness
+        score += potentialSitesFixedCosts[openFacilityIndex]
+    return score
         
-def updateFitness(population, fitness, facilityToCustomerCost, potentialSitesFixedCosts):
+def updateScore(population, elites, score, facilityToCustomerCost, potentialSitesFixedCosts):
     for individualIndex in range(population.shape[0]):
-        fitness[individualIndex] = calculateFitness(population, individualIndex, facilityToCustomerCost, potentialSitesFixedCosts)
+        score[individualIndex] = calculateScore(population, individualIndex, facilityToCustomerCost, potentialSitesFixedCosts)
         
-def sortAll(population, fitness):
-    sortArgs = fitness.argsort()
+def sortAll(population, score):
+    sortArgs = score.argsort()
     population = population[sortArgs]
-    fitness = fitness[sortArgs]
-    return (population, fitness)
+    score = score[sortArgs]
+    return (population, score)
     
 def uniformCrossoverOffspring(indexA, indexB, population, maskProbability):
     offspring = np.empty((population.shape[1], ))
@@ -56,3 +56,9 @@ def bestIndividualPlan(population, individualIndex, facilityToCustomerCost):
         chosenFacilityIndex = np.where(openFacilityCosts == np.min(openFacilityCosts))[0][0]
         plan += [openFacilites[chosenFacilityIndex]]
     return plan
+
+def punishDuplicates(population, score):
+    _, index = np.unique(population, return_index=True, axis=0)
+    for individualIndex in range(population.shape[0]):
+        if individualIndex not in index:
+            score[individualIndex] = np.finfo(np.float64).max

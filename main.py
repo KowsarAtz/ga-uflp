@@ -41,19 +41,24 @@ for i in range(POPULATION_SIZE):
             population[i,j] = False
 
 # GA Main Loop
-fitness = np.empty((population.shape[0], ))
+score = np.empty((population.shape[0], ))
+rank = np.empty((population.shape[0], ), np.int8)
 bestIndividual = None
 bestIndividualRepeatedTime = 0
 bestPlanSoFar = []
 
 for generation in range(MAX_GENERATIONS):
-    updateFitness(population, fitness, facilityToCustomerCost, potentialSitesFixedCosts)
-    (population, fitness) = sortAll(population, fitness)
-    if fitness[0] != bestIndividual:
+    updateScore(population, ELITE_SIZE, score, facilityToCustomerCost, potentialSitesFixedCosts)
+    (population, score) = sortAll(population, score)
+    if score[0] != bestIndividual:
         bestIndividualRepeatedTime = 0
-    bestIndividual = fitness[0]
+    bestIndividual = score[0]
     bestIndividualRepeatedTime += 1
     bestPlanSoFar = bestIndividualPlan(population, 0, facilityToCustomerCost)
+    
+    #bunch of stuff goes here
+    punishDuplicates(population, score)
+    
     offsprings = replaceWeaks(population, POPULATION_SIZE - ELITE_SIZE)
 
 # End Timing
@@ -72,7 +77,7 @@ compareToOptimal = compareBestFoundPlanToOptimalPlan(optimals, bestPlanSoFar)
 
 print('dataset name:',DATASET_FILE)
 print('total generations of', MAX_GENERATIONS)
-print('best individual fitness',bestIndividual,\
+print('best individual score',bestIndividual,\
       'repeated for last',bestIndividualRepeatedTime,'times')
 if False not in compareToOptimal:
     print('REACHED OPTIMAL OF', optimalCost)

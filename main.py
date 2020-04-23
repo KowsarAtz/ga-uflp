@@ -1,6 +1,7 @@
 import numpy as np
 from gaUtils import *
 from settings import *
+from timeit import default_timer
 
 # Optimals
 f = open(ORLIB_PATH+DATASET_FILE+'.txt.opt', 'r')
@@ -27,6 +28,9 @@ for j in range(totalCustomers):
         if i%COST_VALUES_PER_LINE == COST_VALUES_PER_LINE - 1:
             lineItems = f.readline().split()
 
+# Start Timing
+startTimeit = default_timer()
+
 # Population Random Initialization
 population = np.empty((POPULATION_SIZE, totalPotentialSites), np.bool)
 for i in range(POPULATION_SIZE):
@@ -38,15 +42,22 @@ for i in range(POPULATION_SIZE):
 
 # GA Main Loop
 fitness = np.empty((population.shape[0], ))
-rank = np.empty((population.shape[0], ), dtype=np.int16)
-bestIndividual = []
+bestIndividual = None
+bestIndividualRepeatedTime = 0
 bestPlanSoFar = []
+
 for generation in range(MAX_GENERATIONS):
     updateFitness(population, fitness, facilityToCustomerCost, potentialSitesFixedCosts)
     (population, fitness) = sortAll(population, fitness)
-    bestIndividual += [fitness[0]]
+    if fitness[0] != bestIndividual:
+        bestIndividualRepeatedTime = 0
+    bestIndividual = fitness[0]
+    bestIndividualRepeatedTime += 1
     bestPlanSoFar = bestIndividualPlan(population, 0, facilityToCustomerCost)
     offsprings = replaceWeaks(population, POPULATION_SIZE - ELITE_SIZE)
+
+# End Timing
+endTimeit = default_timer()
 
 def compareBestFoundPlanToOptimalPlan(optimal, bestFound):
     compare = []
@@ -59,4 +70,17 @@ def compareBestFoundPlanToOptimalPlan(optimal, bestFound):
 
 compareToOptimal = compareBestFoundPlanToOptimalPlan(optimals, bestPlanSoFar)
 
-
+print('dataset name:',DATASET_FILE)
+print('total generations of', MAX_GENERATIONS)
+print('best individual fitness',bestIndividual,\
+      'repeated for last',bestIndividualRepeatedTime,'times')
+if False not in compareToOptimal:
+    print('REACHED OPTIMAL OF', optimalCost)
+else:
+    print('DID NOT REACHED OPTIMAL OF', optimalCost)
+print('total elapsed time:', endTimeit - startTimeit)
+assignedFacilitiesString = ''
+for f in bestPlanSoFar:
+    assignedFacilitiesString += str(f) + ' '
+print('assigned facilities:')
+print(assignedFacilitiesString)

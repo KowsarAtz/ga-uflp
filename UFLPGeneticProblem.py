@@ -1,9 +1,10 @@
 import numpy as np
 from math import ceil
 from timeit import default_timer
+from pylru import lrucache
 
 class UFLPGeneticProblem:
-    def __init__(self, orlibPath, orlibDataset, orlibCostValuePerLine = 7, populationSize = 150, eliteFraction = 2/3, maxGenerations = 4000, mutationRate = 0.05, crossoverRate = 0.3, nRepeatParams = (10,0.5)):
+    def __init__(self, orlibPath, orlibDataset, orlibCostValuePerLine = 7, populationSize = 150, eliteFraction = 2/3, maxGenerations = 4000, mutationRate = 0.05, crossoverRate = 0.3, nRepeatParams = (10,0.5), cacheParam = 5):
         self.orlibDataset = orlibDataset
         # GA Parameters
         self.populationSize = populationSize
@@ -13,6 +14,10 @@ class UFLPGeneticProblem:
         self.mutationRate = mutationRate
         self.crossoverRate = crossoverRate
         self.nRepeatParams = nRepeatParams
+        
+        # Cache
+        self.cacheSize = cacheParam * self.eilteSize
+        self.cache = lrucache(self.cacheSize)
         
         # Optimals
         f = open(orlibPath+orlibDataset+'.txt.opt', 'r')
@@ -50,7 +55,8 @@ class UFLPGeneticProblem:
         
         # GA Main Loop
         self.score = np.empty((self.populationSize, ))
-        self.rank = np.empty((self.populationSize, ))
+        self.rank = np.ones((self.populationSize, ))
+        self.fromPrevGeneration = np.zeros((self.populationSize, ), dtype=np.bool)
         self.bestIndividual = None
         self.bestIndividualRepeatedTime = 0
         self.bestPlanSoFar = []
@@ -62,20 +68,25 @@ class UFLPGeneticProblem:
             self.score[individualIndex] = self.calculateScore(individualIndex)
                     
     def calculateScore(self, individualIndex):
-        openFacilites = np.where(self.population[individualIndex, :] == True)[0]
+        individual = self.population[individualIndex, :]
+        cacheKey = individual.tobytes()
+        if cacheKey in self.cache:
+            return self.cache.peek(cacheKey)
+        openFacilites = np.where(individual == True)[0]
         score = 0
         if openFacilites.shape[0] == 0: return np.finfo(np.float64).max
         for customerIndex in range(self.totalCustomers):
             openFacilityCosts = self.facilityToCustomerCost[openFacilites, customerIndex]
             score += np.min(openFacilityCosts)
-        for openFacilityIndex in openFacilites:
-            score += self.potentialSitesFixedCosts[openFacilityIndex]
+        score += self.potentialSitesFixedCosts.dot(individual)
+        self.cache[cacheKey] = score
         return score
     
     def sortAll(self):
         sortArgs = self.score.argsort()
         self.population = self.population[sortArgs]
         self.score = self.score[sortArgs]
+        self.fromPrevGeneration = self.fromPrevGeneration[sortArgs]
         
     def uniformCrossoverOffspring(self, indexA, indexB):
         offspring = np.empty((self.totalPotentialSites, ))
@@ -117,8 +128,9 @@ class UFLPGeneticProblem:
             parentAIndex, parentBIndex = self.rouletteWheelParentSelection()
             offspring = self.uniformCrossoverOffspring(parentAIndex, parentBIndex)
             self.mutateOffspring(offspring)
+            # duplicateIndividualsInPopulation = np.where(np.all(self.population==offspring, axis=1))[0]
             self.population[self.totalOffsprings+i, :] = np.transpose(offspring)
-            self.score[self.totalOffsprings+i] = self.calculateScore(self.totalOffsprings+i)
+            self.score[self.totalOffsprings+i] = self.calculateScore(self.totalOffsprings+i)                
     
     def bestIndividualPlan(self, individualIndex):
         openFacilites = np.where(self.population[individualIndex, :] == True)[0]
@@ -128,29 +140,35 @@ class UFLPGeneticProblem:
             chosenFacilityIndex = np.where(openFacilityCosts == np.min(openFacilityCosts))[0][0]
             plan += [openFacilites[chosenFacilityIndex]]
         return plan
-    
-    def punishDuplicates(self):
-        _, index = np.unique(self.population, return_index=True, axis=0)
-        for individualIndex in range(self.populationSize):
-            if individualIndex not in index:
-                self.rank[individualIndex] = 0
                 
     def punishElites(self):
         averageRank = np.average(self.rank)
-        for individualIndex in range(self.eilteSize):
-            if self.rank[individualIndex] > averageRank:
-                self.rank[individualIndex] -= averageRank
-            else:
-                self.rank[individualIndex] = 0
+        for individualIndex in range(self.populationSize):
+            if self.fromPrevGeneration[individualIndex]:
+                if self.rank[individualIndex] > averageRank:
+                    self.rank[individualIndex] -= averageRank
+                else:
+                    self.rank[individualIndex] = 0
+    
+    def identicalIndividuals(self, indexA, indexB):
+        return False not in (self.population[indexA, :] == self.population[indexB, :])
                 
     def updateRank(self):
-        self.rank[0] = self.populationSize
+        lastRank = self.populationSize
+        self.rank[0] = lastRank
         for individualIndex in range(1,self.populationSize):
-            if self.score[individualIndex] == self.score[individualIndex-1]:
-                self.rank[individualIndex] = self.rank[individualIndex-1]
+            if self.identicalIndividuals(individualIndex, individualIndex - 1):
+                self.rank[individualIndex] = 0
             else:
-                self.rank[individualIndex] = self.rank[individualIndex-1]-1
-        self.rank -= (np.min(self.rank) - 1)
+                lastRank -= 1
+                self.rank[individualIndex] = lastRank
+        self.rank -= (lastRank - 1)
+    
+    def markElites(self):
+        ones = np.ones((self.eilteSize, ), dtype=np.bool)
+        zeros = np.ones((self.populationSize - self.eilteSize, ), dtype=np.bool)
+        self.fromPrevGeneration = np.concatenate((ones, zeros))
+        
     
     def compareBestFoundPlanToOptimalPlan(self):
         compare = []
@@ -176,9 +194,9 @@ class UFLPGeneticProblem:
             self.bestIndividualRepeatedTime += 1
             if self.bestIndividualRepeatedTime > self.nRepeat or self.generation >= self.maxGenerations: break
             self.updateRank()
-            self.punishDuplicates()
             self.punishElites()
             self.replaceWeaks()
+            self.markElites()
             self.generation += 1
         
         # End Timing

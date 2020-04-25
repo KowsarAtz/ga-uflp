@@ -4,7 +4,7 @@ from timeit import default_timer
 from pylru import lrucache
 
 class UFLPGeneticProblem:
-    def __init__(self, orlibPath, orlibDataset, orlibCostValuePerLine = 7, populationSize = 150, eliteFraction = 2/3, maxGenerations = 4000, mutationRate = 0.05, crossoverRate = 0.3, nRepeatParams = (10,0.5), cacheParam = 5):
+    def __init__(self, orlibPath, orlibDataset, orlibCostValuePerLine = 7, populationSize = 150, eliteFraction = 2/3, maxGenerations = 4000, mutationRate = 0.05, crossoverMaskRate = 0.3, nRepeatParams = (10,0.5), cacheParam = 5):
         self.orlibDataset = orlibDataset
         # GA Parameters
         self.populationSize = populationSize
@@ -12,7 +12,7 @@ class UFLPGeneticProblem:
         self.totalOffsprings = self.populationSize - self.eilteSize
         self.maxGenerations = maxGenerations
         self.mutationRate = mutationRate
-        self.crossoverRate = crossoverRate
+        self.crossoverMaskRate = crossoverMaskRate
         self.nRepeatParams = nRepeatParams
         
         # Cache
@@ -44,6 +44,10 @@ class UFLPGeneticProblem:
                 if i%orlibCostValuePerLine == orlibCostValuePerLine - 1:
                     lineItems = f.readline().split()
                     
+        # Mutation Paramters
+        self.mutationDistributionMean = (self.populationSize - self.eilteSize) * self.totalPotentialSites * self.mutationRate
+        self.mutationDistributionVariance = (self.populationSize - self.eilteSize) * self.totalPotentialSites * self.mutationRate * (1 - self.mutationRate)
+                    
         # Population Random Initialization
         self.population = np.empty((self.populationSize, self.totalPotentialSites), np.bool)
         for i in range(self.populationSize):
@@ -62,6 +66,7 @@ class UFLPGeneticProblem:
         self.bestPlanSoFar = []
         self.nRepeat = ceil(self.nRepeatParams[0] * (self.totalCustomers * self.totalPotentialSites) ** self.nRepeatParams[1])
         self.generation = 1
+        self.compareToOptimal = None
         
         # PreScore Calculations
         for individualIndex in range(self.populationSize):
@@ -89,48 +94,49 @@ class UFLPGeneticProblem:
         self.fromPrevGeneration = self.fromPrevGeneration[sortArgs]
         
     def uniformCrossoverOffspring(self, indexA, indexB):
-        offspring = np.empty((self.totalPotentialSites, ))
-        for i in range(self.totalPotentialSites):
-            if np.random.uniform() < self.crossoverRate: 
-                offspring[i] = self.population[indexA,i]
-            else: 
-                offspring[i] = self.population[indexB,i]
-        return offspring
+        crossoverMask = np.random.choice(a=[True, False], size=(self.totalPotentialSites,), p=[self.crossoverMaskRate, 1-self.crossoverMaskRate])
+        crossoverMaskComplement = np.invert(crossoverMask)
+        parentA = self.population[indexA,:]
+        parentB = self.population[indexB,:]
+        # offspringA = crossoverMask * parentA + crossoverMaskComplement * parentB
+        # offspringB = crossoverMask * parentB + crossoverMaskComplement * parentA
+        # return (offspringA, offspringB)
+        return crossoverMask * parentA + crossoverMaskComplement * parentB
     
-    def mutateOffspring(self, offspring):
-        for i in range(self.totalPotentialSites):
-            if np.random.uniform() < self.mutationRate:
-                if offspring[i] == True:
-                    offspring[i] = False
-                else:
-                    offspring[i] = True
+    def mutateOffsprings(self):
+        totalMutations = np.random.normal(loc=self.mutationDistributionMean, scale=self.mutationDistributionVariance)
+        totalMutations = np.round(totalMutations)
+        while totalMutations >= 1:
+            individual = np.random.randint(self.eilteSize, self.populationSize)
+            individualIndex = np.random.randint(0, self.totalPotentialSites)
+            if self.population[individual, individualIndex] == True:
+                self.population[individual, individualIndex] = False
+            else:
+                self.population[individual, individualIndex] = True
+            totalMutations -= 1        
     
     def rouletteWheelParentSelection(self):
         rankSum = np.sum(self.rank)
         rand = np.random.uniform(low=0, high=rankSum)
-        randOpposite = (rand + rankSum//2) % rankSum
         partialSum = 0
-        parentA, parentB = None, None
         for individualIndex in range(self.populationSize):
             partialSum += self.rank[individualIndex]
             if partialSum > rand:
-                parentA = individualIndex
-                break
-        partialSum = 0
-        for individualIndex in range(self.populationSize):
-            partialSum += self.rank[individualIndex]
-            if partialSum > randOpposite:
-                parentB = individualIndex
-                return (parentA, parentB)
+                return individualIndex
     
     def replaceWeaks(self):
-        for i in range(self.totalOffsprings):
-            parentAIndex, parentBIndex = self.rouletteWheelParentSelection()
+        # Selection and Crossover
+        for individual in range(self.eilteSize, self.populationSize):
+            parentAIndex = self.rouletteWheelParentSelection()
+            parentBIndex = self.rouletteWheelParentSelection()
+            while parentAIndex == parentBIndex: parentBIndex = self.rouletteWheelParentSelection()
             offspring = self.uniformCrossoverOffspring(parentAIndex, parentBIndex)
-            self.mutateOffspring(offspring)
-            # duplicateIndividualsInPopulation = np.where(np.all(self.population==offspring, axis=1))[0]
-            self.population[self.totalOffsprings+i, :] = np.transpose(offspring)
-            self.score[self.totalOffsprings+i] = self.calculateScore(self.totalOffsprings+i)                
+            self.population[individual, :] = np.transpose(offspring)
+        # Mutation
+        self.mutateOffsprings()
+        # Update Scores
+        for individual in range(self.eilteSize, self.populationSize):
+            self.score[individual] = self.calculateScore(individual)
     
     def bestIndividualPlan(self, individualIndex):
         openFacilites = np.where(self.population[individualIndex, :] == True)[0]
@@ -152,7 +158,7 @@ class UFLPGeneticProblem:
     
     def identicalIndividuals(self, indexA, indexB):
         return False not in (self.population[indexA, :] == self.population[indexB, :])
-                
+        
     def updateRank(self):
         lastRank = self.populationSize
         self.rank[0] = lastRank
@@ -163,6 +169,7 @@ class UFLPGeneticProblem:
                 lastRank -= 1
                 self.rank[individualIndex] = lastRank
         self.rank -= (lastRank - 1)
+        
     
     def markElites(self):
         ones = np.ones((self.eilteSize, ), dtype=np.bool)
@@ -202,13 +209,13 @@ class UFLPGeneticProblem:
         # End Timing
         endTimeit = default_timer()
         
-        compareToOptimal = self.compareBestFoundPlanToOptimalPlan()
+        self.compareToOptimal = self.compareBestFoundPlanToOptimalPlan()
         
         print('\rdataset name:',self.orlibDataset)
         print('total generations of', self.generation)
         print('best individual score', self.bestIndividual,\
               'repeated for last', self.bestIndividualRepeatedTime,'times')
-        if False not in compareToOptimal:
+        if False not in self.compareToOptimal:
             print('REACHED OPTIMAL OF', self.optimalCost)
         else:
             print('DID NOT REACHED OPTIMAL OF', self.optimalCost, "|",\

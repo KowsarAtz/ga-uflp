@@ -4,8 +4,9 @@ from timeit import default_timer
 from pylru import lrucache
 
 class UFLPGeneticProblem:
-    def __init__(self, orlibPath, orlibDataset, orlibCostValuePerLine = 7, populationSize = 150, eliteFraction = 2/3, maxGenerations = 4000, mutationRate = 0.05, crossoverMaskRate = 0.3, nRepeatParams = (10,0.5), cacheParam = 5):
+    def __init__(self, orlibPath, orlibDataset, orlibCostValuePerLine = 7, populationSize = 150, eliteFraction = 2/3, maxGenerations = 4000, mutationRate = 0.05, crossoverMaskRate = 0.3, nRepeatParams = (10,0.5), cacheParam = 5, printSummary = True):
         self.orlibDataset = orlibDataset
+        self.printSummary = printSummary
         # GA Parameters
         self.populationSize = populationSize
         self.eilteSize = ceil(eliteFraction * self.populationSize)
@@ -67,6 +68,7 @@ class UFLPGeneticProblem:
         self.nRepeat = ceil(self.nRepeatParams[0] * (self.totalCustomers * self.totalPotentialSites) ** self.nRepeatParams[1])
         self.generation = 1
         self.compareToOptimal = None
+        self.errorPercentage = None
         
         # PreScore Calculations
         for individualIndex in range(self.populationSize):
@@ -125,13 +127,22 @@ class UFLPGeneticProblem:
                 return individualIndex
     
     def replaceWeaks(self):
-        # Selection and Crossover
+        # Selection
+        parentIndexes = [self.rouletteWheelParentSelection()]
+        while len(parentIndexes) < self.totalOffsprings:
+            parentIndex = self.rouletteWheelParentSelection()
+            if parentIndex != parentIndexes[-1]:
+                parentIndexes += [parentIndex]
+        while parentIndexes[-1] == parentIndexes[0] or parentIndexes[-1] == parentIndexes[-2]:
+            parentIndexes[-1] = self.rouletteWheelParentSelection()
+        # Crossover
+        i = 0
         for individual in range(self.eilteSize, self.populationSize):
-            parentAIndex = self.rouletteWheelParentSelection()
-            parentBIndex = self.rouletteWheelParentSelection()
-            while parentAIndex == parentBIndex: parentBIndex = self.rouletteWheelParentSelection()
-            offspring = self.uniformCrossoverOffspring(parentAIndex, parentBIndex)
+            parentIndexA = parentIndexes[i % self.totalOffsprings]
+            parentIndexB = parentIndexes[(i+1) % self.totalOffsprings]
+            offspring = self.uniformCrossoverOffspring(parentIndexA, parentIndexB)
             self.population[individual, :] = np.transpose(offspring)
+            i += 1
         # Mutation
         self.mutateOffsprings()
         # Update Scores
@@ -192,7 +203,8 @@ class UFLPGeneticProblem:
         startTimeit = default_timer()
         
         while True:
-            print('\rgeneration number %d               ' % self.generation, end='')
+            if self.printSummary:
+                print('\rgeneration number %d               ' % self.generation, end='')
             self.sortAll()
             if self.score[0] != self.bestIndividual:
                 self.bestIndividualRepeatedTime = 0
@@ -210,19 +222,24 @@ class UFLPGeneticProblem:
         endTimeit = default_timer()
         
         self.compareToOptimal = self.compareBestFoundPlanToOptimalPlan()
-        
-        print('\rdataset name:',self.orlibDataset)
-        print('total generations of', self.generation)
-        print('best individual score', self.bestIndividual,\
-              'repeated for last', self.bestIndividualRepeatedTime,'times')
-        if False not in self.compareToOptimal:
-            print('REACHED OPTIMAL OF', self.optimalCost)
+        if False in self.compareToOptimal:    
+            self.errorPercentage = self.bestIndividual - self.optimalCost * 100 / self.optimalCost
         else:
-            print('DID NOT REACHED OPTIMAL OF', self.optimalCost, "|",\
-                  (self.bestIndividual - self.optimalCost) * 100 / self.optimalCost,"% ERROR")
-        print('total elapsed time:', endTimeit - startTimeit)
-        assignedFacilitiesString = ''
-        for f in self.bestPlanSoFar:
-            assignedFacilitiesString += str(f) + ' '
-        print('assigned facilities:')
-        print(assignedFacilitiesString)
+            self.errorPercentage = 0
+        
+        if self.printSummary:
+            print('\rdataset name:',self.orlibDataset)
+            print('total generations of', self.generation)
+            print('best individual score', self.bestIndividual,\
+                  'repeated for last', self.bestIndividualRepeatedTime,'times')
+            if False not in self.compareToOptimal:
+                print('REACHED OPTIMAL OF', self.optimalCost)
+            else:
+                print('DID NOT REACHED OPTIMAL OF', self.optimalCost, "|",\
+                      self.errorPercentage,"% ERROR")
+            print('total elapsed time:', endTimeit - startTimeit)
+            assignedFacilitiesString = ''
+            for f in self.bestPlanSoFar:
+                assignedFacilitiesString += str(f) + ' '
+            print('assigned facilities:')
+            print(assignedFacilitiesString)

@@ -1,11 +1,11 @@
-from UFLPGeneticProblem import UFLPGeneticProblem
+from UFLPGeneticProblem import UFLPGeneticProblem as GA
 
 datasets = []
 # datasets += ['70/cap71','70/cap72','70/cap73','70/cap74']
 # datasets += ['100/cap101', '100/cap102', '100/cap103', '100/cap104']
 # datasets += ['130/cap131', '130/cap132', '130/cap133', '130/cap134']
 # datasets += ['a-c/capa', 'a-c/capb', 'a-c/capc']
-datasets += ['a-c/capa']
+datasets += ['130/cap133']
 
 
 OPTIMAL = 'optimal'
@@ -14,13 +14,14 @@ BELOW1 = 'below 1'
 ABOVE1 = 'above 1'
 REACHED = 'reached scores'
 FAILED = 'failed scores'
+ERRORS = 'error percs'
 lastFaild = ''
 ITERATIONS = 5
 
 reached = {}
 for dataset in datasets:
     reached[dataset] = {OPTIMAL: 0, BELOWp2: 0, BELOW1: 0, ABOVE1: 0,
-                        REACHED: [], FAILED: []}
+                        REACHED: [], FAILED: [], ERRORS: []}
 
 # problems = []
 failedScores = []
@@ -31,7 +32,7 @@ total = ITERATIONS * len(datasets)
 
 for i in range(ITERATIONS):
     for dataset in datasets:    
-        problem = UFLPGeneticProblem(orlibPath = '/tmp/ORLIB/ORLIB-uncap/', 
+        problem = GA(orlibPath = '/tmp/ORLIB/ORLIB-uncap/', 
                                      orlibDataset = dataset,
                                      maxGenerations = 2000,
                                      nRepeatParams = (2,0.5), 
@@ -53,6 +54,7 @@ for i in range(ITERATIONS):
             totalFailed += 1
             lastFaild = dataset
             reached[dataset][FAILED] += [problem.score]
+            reached[dataset][ERRORS] += [error]
             if error < 0.2:
                 reached[dataset][BELOWp2] += 1
             elif error < 1:

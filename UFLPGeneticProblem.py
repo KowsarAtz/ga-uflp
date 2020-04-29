@@ -2,12 +2,31 @@ import numpy as np
 from math import ceil
 from timeit import default_timer
 from pylru import lrucache
+from sys import stdout
 
 class UFLPGeneticProblem:
     MAX_FLOAT = np.finfo(np.float64).max
-    def __init__(self, orlibPath, orlibDataset, orlibCostValuePerLine = 7, populationSize = 150, eliteFraction = 2/3, maxGenerations = 4000, mutationRate = 0.05, crossoverMaskRate = 0.3, nRepeatParams = (10,0.5), cacheParam = 5, printSummary = True):
+    def __init__(
+        self, 
+        orlibPath,
+        orlibDataset,
+        outputFile = stdout,
+        orlibCostValuePerLine = 7,
+        # maxFacilities = None,
+        populationSize = 150,
+        eliteFraction = 2/3,
+        maxGenerations = 4000,
+        mutationRate = 0.05,
+        crossoverMaskRate = 0.3,
+        nRepeatParams = (10,0.5),
+        cacheParam = 5,
+        printSummary = True,
+    ):
+
         self.orlibDataset = orlibDataset
+        self.fout = outputFile
         self.printSummary = printSummary
+
         # GA Parameters
         self.populationSize = populationSize
         self.eliteSize = ceil(eliteFraction * self.populationSize)
@@ -16,6 +35,7 @@ class UFLPGeneticProblem:
         self.mutationRate = mutationRate
         self.crossoverMaskRate = crossoverMaskRate
         self.nRepeatParams = nRepeatParams
+        # self.maxFacilities = maxFacilities
         
         # Cache
         self.cacheSize = cacheParam * self.eliteSize
@@ -64,6 +84,7 @@ class UFLPGeneticProblem:
         self.generation = 1
         self.compareToOptimal = None
         self.errorPercentage = None
+        self.mainLoopElapsedTime = None
         
         # PreScore Calculations
         for individualIndex in range(self.populationSize):
@@ -72,6 +93,10 @@ class UFLPGeneticProblem:
     def calculateScore(self, individualIndex=None, individual=None, byIndex=True):
         if byIndex:
             individual = self.population[individualIndex, :]
+        # binary = np.array(individual, dtype=np.int8)
+        # if self.maxFacilities != None:
+        #     if binary.dot(binary) > self.maxFacilities:
+        #         return UFLPGeneticProblem.MAX_FLOAT
         cacheKey = individual.tobytes()
         if cacheKey in self.cache:
             return self.cache.peek(cacheKey)
@@ -186,7 +211,7 @@ class UFLPGeneticProblem:
         
         while True:
             if self.printSummary:
-                print('\rgeneration number %d               ' % self.generation, end='')
+                print('\r' + self.orlibDataset, 'generation number %d' % self.generation, end='', file=stdout)
             self.sortAll()
             if self.score[0] != self.bestIndividual:
                 self.bestIndividualRepeatedTime = 0
@@ -202,6 +227,7 @@ class UFLPGeneticProblem:
         
         # End Timing
         endTimeit = default_timer()
+        self.mainLoopElapsedTime = endTimeit - startTimeit
         
         self.compareToOptimal = self.compareBestFoundPlanToOptimalPlan()
         if False in self.compareToOptimal:    
@@ -210,18 +236,18 @@ class UFLPGeneticProblem:
             self.errorPercentage = 0
         
         if self.printSummary:
-            print('\rdataset name:',self.orlibDataset)
-            print('total generations of', self.generation)
+            print('\rdataset name:',self.orlibDataset, file=self.fout)
+            print('total generations of', self.generation, file=self.fout)
             print('best individual score', self.bestIndividual,\
-                  'repeated for last', self.bestIndividualRepeatedTime,'times')
+                  'repeated for last', self.bestIndividualRepeatedTime,'times', file=self.fout)
             if False not in self.compareToOptimal:
-                print('REACHED OPTIMAL OF', self.optimalCost)
+                print('REACHED OPTIMAL OF', self.optimalCost, file=self.fout)
             else:
                 print('DID NOT REACHED OPTIMAL OF', self.optimalCost, "|",\
-                      self.errorPercentage,"% ERROR")
-            print('total elapsed time:', endTimeit - startTimeit)
+                      self.errorPercentage,"% ERROR", file=self.fout)
+            print('total elapsed time:', self.mainLoopElapsedTime, file=self.fout)
             assignedFacilitiesString = ''
             for f in self.bestPlanSoFar:
                 assignedFacilitiesString += str(f) + ' '
-            print('assigned facilities:')
-            print(assignedFacilitiesString)
+            print('assigned facilities:', file=self.fout)
+            print(assignedFacilitiesString, file=self.fout)

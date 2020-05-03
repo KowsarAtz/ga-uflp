@@ -5,6 +5,7 @@ args = sys.argv[:]
 outputFileName = args[1]
 f = open(outputFileName, 'w')
 ITERATIONS = int(args[2])
+CACHE = int(args[3])
 
 datasets = []
 datasets += ['70/cap71','70/cap72','70/cap73','70/cap74']
@@ -40,12 +41,13 @@ for i in range(ITERATIONS):
             orlibDataset = dataset,
             outputFile = f,
             maxGenerations = 2000,
-            nRepeatParams = (10,0.5), 
+            nRepeatParams = (2,0.5), 
             mutationRate = 0.005,
             crossoverMaskRate = 0.3,
             eliteFraction = 1/3,
             printSummary = True,
             populationSize = 150,
+            cacheParam = CACHE
         )
         
         problem.run()

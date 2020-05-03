@@ -51,7 +51,7 @@ class UFLPGeneticProblem:
         f = open(orlibPath+orlibDataset+'.txt', 'r')
         (self.totalPotentialSites, self.totalCustomers) = [int(string) for string in f.readline().split()]
         self.potentialSitesFixedCosts = np.empty((self.totalPotentialSites,))
-        self.facilityToCustomerUnitCost = np.empty((self.totalPotentialSites, self.totalCustomers))
+        # self.facilityToCustomerUnitCost = np.empty((self.totalPotentialSites, self.totalCustomers))
         self.facilityToCustomerCost = np.empty((self.totalPotentialSites, self.totalCustomers))
         
         for i in range(self.totalPotentialSites):
@@ -61,7 +61,7 @@ class UFLPGeneticProblem:
             self.demand = np.float64(f.readline())
             lineItems = f.readline().split()
             for i in range(self.totalPotentialSites):
-                self.facilityToCustomerUnitCost[i,j] = np.float64(lineItems[i%orlibCostValuePerLine])/self.demand
+                # self.facilityToCustomerUnitCost[i,j] = np.float64(lineItems[i%orlibCostValuePerLine])/self.demand
                 self.facilityToCustomerCost[i,j] = np.float64(lineItems[i%orlibCostValuePerLine])
                 if i%orlibCostValuePerLine == orlibCostValuePerLine - 1:
                     lineItems = f.readline().split()
@@ -72,6 +72,7 @@ class UFLPGeneticProblem:
                     
         # Population Random Initialization
         self.population = np.random.choice(a=[True, False], size=(self.populationSize, self.totalPotentialSites), p=[0.5, 0.5])
+        self.offsprings = np.empty((self.totalOffsprings, self.totalPotentialSites))
         
         # GA Main Loop
         self.score = np.empty((self.populationSize, ))
@@ -90,24 +91,20 @@ class UFLPGeneticProblem:
         for individualIndex in range(self.populationSize):
             self.score[individualIndex] = self.calculateScore(individualIndex)
                     
-    def calculateScore(self, individualIndex=None, individual=None, byIndex=True):
-        if byIndex:
+    def calculateScore(self, individualIndex=None, individual=None, cached=True):
+        if individualIndex != None:
             individual = self.population[individualIndex, :]
-        # binary = np.array(individual, dtype=np.int8)
-        # if self.maxFacilities != None:
-        #     if binary.dot(binary) > self.maxFacilities:
-        #         return UFLPGeneticProblem.MAX_FLOAT
         cacheKey = individual.tobytes()
         if cacheKey in self.cache:
             return self.cache.peek(cacheKey)
         openFacilites = np.where(individual == True)[0]
-        score = 0
         if openFacilites.shape[0] == 0: return UFLPGeneticProblem.MAX_FLOAT
+        score = 0
         for customerIndex in range(self.totalCustomers):
             openFacilityCosts = self.facilityToCustomerCost[openFacilites, customerIndex]
             score += np.min(openFacilityCosts)
         score += self.potentialSitesFixedCosts.dot(individual)
-        self.cache[cacheKey] = score
+        if cached: self.cache[cacheKey] = score
         return score
     
     def sortAll(self):
@@ -127,14 +124,14 @@ class UFLPGeneticProblem:
         totalMutations = np.random.normal(loc=self.mutationDistributionMean, scale=self.mutationDistributionVariance)
         totalMutations = np.round(totalMutations)
         while totalMutations >= 1:
-            individual = np.random.randint(self.eliteSize, self.populationSize)
+            individual = np.random.randint(0, self.totalOffsprings)
             individualIndex = np.random.randint(0, self.totalPotentialSites)
-            if self.population[individual, individualIndex] == True:
-                self.population[individual, individualIndex] = False
+            if self.offsprings[individual, individualIndex] == True:
+                self.offsprings[individual, individualIndex] = False
             else:
-                self.population[individual, individualIndex] = True
+                self.offsprings[individual, individualIndex] = True
             totalMutations -= 1        
-    
+        
     def rouletteWheelParentSelection(self):
         rankSum = np.sum(self.rank)
         rand = np.random.uniform(low=0, high=rankSum)
@@ -146,17 +143,20 @@ class UFLPGeneticProblem:
     
     def replaceWeaks(self):
         # Selection, Crossover and Replacement
-        for individual in range(self.eliteSize, self.populationSize):
+        individual = 0
+        while individual < self.totalOffsprings:
             parentIndexA = self.rouletteWheelParentSelection()
             parentIndexB = self.rouletteWheelParentSelection()
             while parentIndexA == parentIndexB : parentIndexB = self.rouletteWheelParentSelection() 
             offspring = self.uniformCrossoverOffspring(parentIndexA, parentIndexB)
-            self.population[individual, :] = np.transpose(offspring)
+            self.offsprings[individual, :] = offspring
+            individual += 1
         # Mutation
         self.mutateOffsprings()
-        # Update Scores
-        for individual in range(self.eliteSize, self.populationSize):
-            self.score[individual] = self.calculateScore(individual)
+        # Update Scores and Replacing
+        for individual in range(self.totalOffsprings):
+            self.population[self.eliteSize + individual, :] = self.offsprings[individual, :]
+            self.score[self.eliteSize + individual] = self.calculateScore(self.eliteSize + individual)
     
     def bestIndividualPlan(self, individualIndex):
         openFacilites = np.where(self.population[individualIndex, :] == True)[0]
@@ -175,7 +175,7 @@ class UFLPGeneticProblem:
                     self.rank[individualIndex] -= averageRank
                 else:
                     self.rank[individualIndex] = 0
-    
+        
     def identicalIndividuals(self, indexA, indexB):
         return False not in (self.population[indexA, :] == self.population[indexB, :])
         
@@ -187,7 +187,7 @@ class UFLPGeneticProblem:
                 self.rank[individualIndex] = 0
             else:
                 lastRank -= 1
-                self.rank[individualIndex] = lastRank
+                self.rank[individualIndex] = lastRank    
     
     def markElites(self):
         ones = np.ones((self.eliteSize, ), dtype=np.bool)

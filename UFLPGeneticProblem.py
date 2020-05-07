@@ -20,7 +20,8 @@ class UFLPGeneticProblem:
         maxGenerations = 4000,
         mutationRate = 0.05,
         crossoverMaskRate = 0.3,
-        nRepeatParams = (10,0.5),
+        # nRepeatParams = (10,0.5),
+        nRepeatParams = None,
         cacheParam = 5,
         printSummary = True,
     ):
@@ -36,7 +37,6 @@ class UFLPGeneticProblem:
         self.maxGenerations = maxGenerations
         self.mutationRate = mutationRate
         self.crossoverMaskRate = crossoverMaskRate
-        self.nRepeatParams = nRepeatParams
         # self.maxFacilities = maxFacilities
         
         # Cache
@@ -85,7 +85,9 @@ class UFLPGeneticProblem:
         self.bestIndividualRepeatedTime = 0
         self.bestPlanSoFar = []
         self.duplicateIndices = []
-        self.nRepeat = ceil(self.nRepeatParams[0] * (self.totalCustomers * self.totalPotentialSites) ** self.nRepeatParams[1])
+        self.nRepeat = None
+        if nRepeatParams != None:
+            self.nRepeat = ceil(self.nRepeatParams[0] * (self.totalCustomers * self.totalPotentialSites) ** self.nRepeatParams[1])
         self.generation = 1
         self.compareToOptimal = None
         self.errorPercentage = None
@@ -233,6 +235,12 @@ class UFLPGeneticProblem:
                 compare += [False]
         return np.array(compare)
     
+    def finsih(self):
+        if self.nRepeat == None:
+            return self.generation >= self.maxGenerations
+        return self.bestIndividualRepeatedTime > self.nRepeat or\
+             self.generation >= self.maxGenerations
+
     def run(self):
         
         # Start Timing
@@ -246,7 +254,7 @@ class UFLPGeneticProblem:
                 self.bestIndividualRepeatedTime = 0
                 self.bestIndividual = self.score[0]
             self.bestIndividualRepeatedTime += 1
-            if self.bestIndividualRepeatedTime > self.nRepeat or self.generation >= self.maxGenerations: 
+            if self.finsih(): 
                 self.bestPlanSoFar = self.bestIndividualPlan(0)
                 break
             self.updateRank()

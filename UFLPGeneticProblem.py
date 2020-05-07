@@ -15,6 +15,8 @@ class UFLPGeneticProblem:
         # maxFacilities = None,
         populationSize = 150,
         eliteFraction = 2/3,
+        maxRank = 2.5,
+        minRank = 0.712,
         maxGenerations = 4000,
         mutationRate = 0.05,
         crossoverMaskRate = 0.3,
@@ -70,6 +72,10 @@ class UFLPGeneticProblem:
         self.mutationDistributionMean = (self.populationSize - self.eliteSize) * self.totalPotentialSites * self.mutationRate
         self.mutationDistributionVariance = (self.populationSize - self.eliteSize) * self.totalPotentialSites * self.mutationRate * (1 - self.mutationRate)
                     
+        # Rank Paramters
+        self.maxRank = maxRank
+        self.rankStep = (maxRank - minRank) / (self.populationSize - 1)
+
         # Population Random Initialization
         self.population = np.random.choice(a=[True, False], size=(self.populationSize, self.totalPotentialSites), p=[0.5, 0.5])
         self.offsprings = np.empty((self.totalOffsprings, self.totalPotentialSites))
@@ -118,7 +124,10 @@ class UFLPGeneticProblem:
         crossoverMaskComplement = np.invert(crossoverMask)
         parentA = self.population[indexA,:]
         parentB = self.population[indexB,:]
-        return crossoverMask * parentA + crossoverMaskComplement * parentB
+        return (
+            crossoverMask * parentA + crossoverMaskComplement * parentB,
+            crossoverMask * parentB + crossoverMaskComplement * parentA
+        )
     
     def mutateOffsprings(self):
         totalMutations = np.random.normal(loc=self.mutationDistributionMean, scale=self.mutationDistributionVariance)
@@ -148,9 +157,10 @@ class UFLPGeneticProblem:
             parentIndexA = self.rouletteWheelParentSelection()
             parentIndexB = self.rouletteWheelParentSelection()
             while parentIndexA == parentIndexB : parentIndexB = self.rouletteWheelParentSelection() 
-            offspring = self.uniformCrossoverOffspring(parentIndexA, parentIndexB)
-            self.offsprings[individual, :] = offspring
-            individual += 1
+            offspringA, offspringB = self.uniformCrossoverOffspring(parentIndexA, parentIndexB)
+            self.offsprings[individual, :] = offspringA
+            self.offsprings[(individual + 1) % self.totalOffsprings, :] = offspringB
+            individual += 2
         # Mutation
         self.mutateOffsprings()
         # Update Scores and Replacing
@@ -180,14 +190,14 @@ class UFLPGeneticProblem:
         return False not in (self.population[indexA, :] == self.population[indexB, :])
         
     def updateRank(self):
-        lastRank = self.populationSize
-        self.rank[0] = lastRank
+        currentRank = self.maxRank
+        self.rank[0] = currentRank
         for individualIndex in range(1,self.populationSize):
+            currentRank -= self.rankStep
             if self.identicalIndividuals(individualIndex, individualIndex - 1):
                 self.rank[individualIndex] = 0
             else:
-                lastRank -= 1
-                self.rank[individualIndex] = lastRank    
+                self.rank[individualIndex] = currentRank    
     
     def markElites(self):
         ones = np.ones((self.eliteSize, ), dtype=np.bool)
@@ -215,10 +225,11 @@ class UFLPGeneticProblem:
             self.sortAll()
             if self.score[0] != self.bestIndividual:
                 self.bestIndividualRepeatedTime = 0
-                self.bestPlanSoFar = self.bestIndividualPlan(0)
                 self.bestIndividual = self.score[0]
             self.bestIndividualRepeatedTime += 1
-            if self.bestIndividualRepeatedTime > self.nRepeat or self.generation >= self.maxGenerations: break
+            if self.bestIndividualRepeatedTime > self.nRepeat or self.generation >= self.maxGenerations: 
+                self.bestPlanSoFar = self.bestIndividualPlan(0)
+                break
             self.updateRank()
             self.punishElites()
             self.replaceWeaks()

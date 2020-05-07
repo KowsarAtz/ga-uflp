@@ -8,10 +8,19 @@ ITERATIONS = int(args[2])
 CACHE = int(args[3])
 
 datasets = []
-datasets += ['70/cap71','70/cap72','70/cap73','70/cap74']
-# datasets += ['100/cap101', '100/cap102', '100/cap103', '100/cap104']
-# datasets += ['130/cap131', '130/cap132', '130/cap133', '130/cap134']
-# datasets += ['a-c/capa', 'a-c/capb', 'a-c/capc']
+
+datasets += ['cap/40/cap4%d' % (i+1) for i in range(4)]
+datasets += ['cap/50/cap51']
+datasets += ['cap/60/cap6%d' % (i+1) for i in range(4)]
+datasets += ['cap/80/cap8%d' % (i+1) for i in range(4)]
+datasets += ['cap/90/cap9%d' % (i+1) for i in range(4)]
+datasets += ['cap/110/cap11%d' % (i+1) for i in range(4)]
+datasets += ['cap/120/cap12%d' % (i+1) for i in range(4)]
+
+datasets += ['uncap/70/cap7%d' % (i+1) for i in range(4)]
+datasets += ['uncap/100/cap10%d' % (i+1) for i in range(4)]
+datasets += ['uncap/130/cap13%d' % (i+1) for i in range(4)]
+datasets += ['uncap/a-c/cap%s' % s for s in ['a', 'b', 'c']]
 
 OPTIMAL = 'optimal'
 BELOWP2 = 'below 0.2'
@@ -37,13 +46,13 @@ for i in range(ITERATIONS):
 
     for dataset in datasets:    
         problem = GA(
-            orlibPath = './reports/ORLIB/ORLIB-uncap/', 
+            orlibPath = './reports/ORLIB/ORLIB-', 
             orlibDataset = dataset,
             outputFile = f,
             maxGenerations = 2000,
             nRepeatParams = (2,0.5), 
-            mutationRate = 0.005,
-            crossoverMaskRate = 0.3,
+            mutationRate = 0.01,
+            crossoverMaskRate = 0.4,
             eliteFraction = 1/3,
             printSummary = True,
             populationSize = 150,

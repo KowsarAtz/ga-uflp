@@ -104,11 +104,9 @@ class UFLPGeneticProblem:
         if cacheKey in self.cache:
             return self.cache.peek(cacheKey)
         openFacilites = np.where(individual == True)[0]
-        if openFacilites.shape[0] == 0: return UFLPGeneticProblem.MAX_FLOAT
-        score = 0
-        for customerIndex in range(self.totalCustomers):
-            openFacilityCosts = self.facilityToCustomerCost[openFacilites, customerIndex]
-            score += np.min(openFacilityCosts)
+        if openFacilites.shape[0] == 0: 
+            return UFLPGeneticProblem.MAX_FLOAT
+        score = np.sum(np.amin(self.facilityToCustomerCost[openFacilites, :], axis=0))
         score += self.potentialSitesFixedCosts.dot(individual)
         if cached: self.cache[cacheKey] = score
         return score
@@ -129,17 +127,11 @@ class UFLPGeneticProblem:
             crossoverMask * parentB + crossoverMaskComplement * parentA
         )
     
-    def mutateOffsprings(self):
-        totalMutations = np.random.normal(loc=self.mutationDistributionMean, scale=self.mutationDistributionVariance)
-        totalMutations = np.round(totalMutations)
-        while totalMutations >= 1:
-            individual = np.random.randint(0, self.totalOffsprings)
-            individualIndex = np.random.randint(0, self.totalPotentialSites)
-            if self.offsprings[individual, individualIndex] == True:
-                self.offsprings[individual, individualIndex] = False
-            else:
-                self.offsprings[individual, individualIndex] = True
-            totalMutations -= 1        
+    def mutateOffsprings(self):      
+        mutationRate = self.mutationRate
+        mask =  np.random.choice(a=[True, False], size=(self.totalOffsprings, self.totalPotentialSites), p=[mutationRate, 1-mutationRate])
+        self.offsprings = self.offsprings != mask
+        
         
     def rouletteWheelParentSelection(self):
         rankSum = np.sum(self.rank)

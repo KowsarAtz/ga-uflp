@@ -87,6 +87,7 @@ class UFLPGeneticProblem:
         self.bestIndividual = None
         self.bestIndividualRepeatedTime = 0
         self.bestPlanSoFar = []
+        self.duplicateIndices = []
         self.nRepeat = ceil(self.nRepeatParams[0] * (self.totalCustomers * self.totalPotentialSites) ** self.nRepeatParams[1])
         self.generation = 1
         self.compareToOptimal = None
@@ -156,9 +157,17 @@ class UFLPGeneticProblem:
         # Mutation
         self.mutateOffsprings()
         # Update Scores and Replacing
-        for individual in range(self.totalOffsprings):
-            self.population[self.eliteSize + individual, :] = self.offsprings[individual, :]
-            self.score[self.eliteSize + individual] = self.calculateScore(self.eliteSize + individual)
+        newIndex = self.populationSize - 1
+        lenDuplicates = len(self.duplicateIndices)
+        while lenDuplicates < self.totalOffsprings:
+            if newIndex not in self.duplicateIndices:
+                self.duplicateIndices += [newIndex]
+                lenDuplicates += 1
+            newIndex -= 1
+        duplicates = self.duplicateIndices
+        for i in range(self.totalOffsprings):
+            self.population[duplicates[i], :] = self.offsprings[i, :]
+            self.score[duplicates[i]] = self.calculateScore(duplicates[i])
     
     def bestIndividualPlan(self, individualIndex):
         openFacilites = np.where(self.population[individualIndex, :] == True)[0]
@@ -182,12 +191,14 @@ class UFLPGeneticProblem:
         return False not in (self.population[indexA, :] == self.population[indexB, :])
         
     def updateRank(self):
+        self.duplicateIndices = []
         currentRank = self.maxRank
         self.rank[0] = currentRank
         for individualIndex in range(1,self.populationSize):
             currentRank -= self.rankStep
             if self.identicalIndividuals(individualIndex, individualIndex - 1):
                 self.rank[individualIndex] = 0
+                self.duplicateIndices = [individualIndex] + self.duplicateIndices
             else:
                 self.rank[individualIndex] = currentRank    
     

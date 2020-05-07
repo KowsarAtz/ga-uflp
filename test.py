@@ -51,8 +51,8 @@ for i in range(ITERATIONS):
             outputFile = f,
             maxGenerations = 2000,
             nRepeatParams = (2,0.5), 
-            mutationRate = 0.01,
-            crossoverMaskRate = 0.4,
+            mutationRate = 0.005,
+            crossoverMaskRate = 0.3,
             eliteFraction = 1/3,
             printSummary = True,
             populationSize = 150,
@@ -92,4 +92,3 @@ for key in reached:
     print(ABOVE1, data[ABOVE1], file=f)
     print(ERRORS, data[ERRORS], file=f)
     print('average elapsed time', sum(data[TIMES])/len(data[TIMES]), file=f)
-    

@@ -20,7 +20,6 @@ class UFLPGeneticProblem:
         maxGenerations = 4000,
         mutationRate = 0.05,
         crossoverMaskRate = 0.3,
-        # nRepeatParams = (10,0.5),
         nRepeatParams = None,
         cacheParam = 5,
         printSummary = True,
@@ -53,7 +52,6 @@ class UFLPGeneticProblem:
         f = open(orlibPath+orlibDataset+'.txt', 'r')
         (self.totalPotentialSites, self.totalCustomers) = [int(string) for string in f.readline().split()]
         self.potentialSitesFixedCosts = np.empty((self.totalPotentialSites,))
-        # self.facilityToCustomerUnitCost = np.empty((self.totalPotentialSites, self.totalCustomers))
         self.facilityToCustomerCost = np.empty((self.totalPotentialSites, self.totalCustomers))
         
         for i in range(self.totalPotentialSites):
@@ -63,7 +61,6 @@ class UFLPGeneticProblem:
             self.demand = np.float64(f.readline())
             lineItems = f.readline().split()
             for i in range(self.totalPotentialSites):
-                # self.facilityToCustomerUnitCost[i,j] = np.float64(lineItems[i%orlibCostValuePerLine])/self.demand
                 self.facilityToCustomerCost[i,j] = np.float64(lineItems[i%orlibCostValuePerLine])
                 if i%orlibCostValuePerLine == orlibCostValuePerLine - 1:
                     lineItems = f.readline().split()

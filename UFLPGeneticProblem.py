@@ -151,7 +151,7 @@ class UFLPGeneticProblem:
             offspringsIndex += 1
 
         populationIndex = self.populationSize - 1
-        while  offspringsIndex < self.totalOffsprings:
+        while offspringsIndex < self.totalOffsprings:
             currentScore = self.score[populationIndex]
             newScore = self.offspringsScore[offspringsIndex]
             if newScore > currentScore:
@@ -191,7 +191,8 @@ class UFLPGeneticProblem:
             currentRank -= self.rankStep
             if self.identicalIndividuals(individualIndex, individualIndex - 1):
                 self.rank[individualIndex] = 0
-                self.duplicateIndices = [individualIndex] + self.duplicateIndices
+                if individualIndex < self.eliteSize:
+                    self.duplicateIndices = [individualIndex] + self.duplicateIndices
             else:
                 self.rank[individualIndex] = currentRank    
     

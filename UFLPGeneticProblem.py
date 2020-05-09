@@ -8,26 +8,19 @@ class UFLPGeneticProblem:
     MAX_FLOAT = np.finfo(np.float64).max
     def __init__(
         self, 
-        orlibPath,
-        orlibDataset,
-        outputFile = stdout,
-        orlibCostValuePerLine = 7,
+        potentialSitesFixedCosts,
+        facilityToCustomerCost,
         # maxFacilities = None,
+        mutationRate = 0.01,
+        crossoverMaskRate = 0.4,
+        eliteFraction = 1/3,
         populationSize = 150,
-        eliteFraction = 2/3,
+        cacheParam = 50,
         maxRank = 2.5,
         minRank = 0.712,
         maxGenerations = 4000,
-        mutationRate = 0.05,
-        crossoverMaskRate = 0.3,
-        nRepeatParams = None,
-        cacheParam = 5,
-        printSummary = True,
+        nRepeatParams = None
     ):
-
-        self.orlibDataset = orlibDataset
-        self.fout = outputFile
-        self.printSummary = printSummary
 
         # GA Parameters
         self.populationSize = populationSize
@@ -42,28 +35,11 @@ class UFLPGeneticProblem:
         self.cacheSize = cacheParam * self.eliteSize
         self.cache = lrucache(self.cacheSize)
         
-        # Optimals
-        f = open(orlibPath+orlibDataset+'.txt.opt', 'r')
-        self.optimals = f.readline().split()
-        self.optimalCost = float(self.optimals[-1])
-        self.optimals = [int(string) for string in self.optimals[:-1]]
-        
         # Input Data
-        f = open(orlibPath+orlibDataset+'.txt', 'r')
-        (self.totalPotentialSites, self.totalCustomers) = [int(string) for string in f.readline().split()]
-        self.potentialSitesFixedCosts = np.empty((self.totalPotentialSites,))
-        self.facilityToCustomerCost = np.empty((self.totalPotentialSites, self.totalCustomers))
-        
-        for i in range(self.totalPotentialSites):
-            self.potentialSitesFixedCosts[i] = np.float64(f.readline().split()[1])
-        
-        for j in range(self.totalCustomers):
-            self.demand = np.float64(f.readline())
-            lineItems = f.readline().split()
-            for i in range(self.totalPotentialSites):
-                self.facilityToCustomerCost[i,j] = np.float64(lineItems[i%orlibCostValuePerLine])
-                if i%orlibCostValuePerLine == orlibCostValuePerLine - 1:
-                    lineItems = f.readline().split()
+        self.potentialSitesFixedCosts = potentialSitesFixedCosts
+        self.facilityToCustomerCost = facilityToCustomerCost
+        self.totalPotentialSites = self.facilityToCustomerCost.shape[0]
+        self.totalCustomers = self.facilityToCustomerCost.shape[1]
 
         # Rank Paramters
         self.maxRank = maxRank
@@ -80,14 +56,11 @@ class UFLPGeneticProblem:
         self.fromPrevGeneration = np.zeros((self.populationSize, ), dtype=np.bool)
         self.bestIndividual = None
         self.bestIndividualRepeatedTime = 0
-        self.bestPlanSoFar = []
         self.duplicateIndices = []
         self.nRepeat = None
         if nRepeatParams != None:
             self.nRepeat = ceil(self.nRepeatParams[0] * (self.totalCustomers * self.totalPotentialSites) ** self.nRepeatParams[1])
         self.generation = 1
-        self.compareToOptimal = None
-        self.errorPercentage = None
         self.mainLoopElapsedTime = None
         
         # PreScore Calculations
@@ -159,12 +132,11 @@ class UFLPGeneticProblem:
             self.offsprings[individual, :] = offspringA
             self.offsprings[(individual + 1) % self.totalOffsprings, :] = offspringB
             individual += 2
-
+        
         # Mutation
         self.mutateOffsprings()
         self.calculateOffspringsScore()
         self.sortOffsprings()
-
 
         # Replacement
         offspringsIndex = 0
@@ -221,16 +193,6 @@ class UFLPGeneticProblem:
     
     def markElites(self):
         self.fromPrevGeneration = np.ones((self.populationSize, ), dtype=np.bool)
-        
-    
-    def compareBestFoundPlanToOptimalPlan(self):
-        compare = []
-        for i in range(len(self.optimals)):
-            if self.optimals[i] == self.bestPlanSoFar[i]: 
-                compare += [True]
-            else: 
-                compare += [False]
-        return np.array(compare)
     
     def finsih(self):
         if self.nRepeat == None:
@@ -242,47 +204,21 @@ class UFLPGeneticProblem:
         
         # Start Timing
         startTimeit = default_timer()
-        
-        while True:
-            if self.printSummary:
-                print('\r' + self.orlibDataset, 'generation number %d' % self.generation, end='', file=stdout)
+
+        self.sortAll()
+        while not self.finish():
+            self.updateRank()
+            self.punishElites()
+            self.markElites()
+            self.replaceWeaks()
             self.sortAll()
             if self.score[0] != self.bestIndividual:
                 self.bestIndividualRepeatedTime = 0
                 self.bestIndividual = self.score[0]
             self.bestIndividualRepeatedTime += 1
-            if self.finsih(): 
-                self.bestPlanSoFar = self.bestIndividualPlan(0)
-                break
-            self.updateRank()
-            self.punishElites()
-            self.markElites()
-            self.replaceWeaks()
             self.generation += 1
-        
+        self.bestPlan = self.bestIndividualPlan(0)
+
         # End Timing
         endTimeit = default_timer()
         self.mainLoopElapsedTime = endTimeit - startTimeit
-        
-        self.compareToOptimal = self.compareBestFoundPlanToOptimalPlan()
-        if False in self.compareToOptimal:    
-            self.errorPercentage = (self.bestIndividual - self.optimalCost) * 100 / self.optimalCost
-        else:
-            self.errorPercentage = 0
-        
-        if self.printSummary:
-            print('\rdataset name:',self.orlibDataset, file=self.fout)
-            print('total generations of', self.generation, file=self.fout)
-            print('best individual score', self.bestIndividual,\
-                  'repeated for last', self.bestIndividualRepeatedTime,'times', file=self.fout)
-            if False not in self.compareToOptimal:
-                print('REACHED OPTIMAL OF', self.optimalCost, file=self.fout)
-            else:
-                print('DID NOT REACHED OPTIMAL OF', self.optimalCost, "|",\
-                      self.errorPercentage,"% ERROR", file=self.fout)
-            print('total elapsed time:', self.mainLoopElapsedTime, file=self.fout)
-            assignedFacilitiesString = ''
-            for f in self.bestPlanSoFar:
-                assignedFacilitiesString += str(f) + ' '
-            print('assigned facilities:', file=self.fout)
-            print(assignedFacilitiesString, file=self.fout)

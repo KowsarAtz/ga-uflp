@@ -10,7 +10,6 @@ class UFLPGeneticProblem:
         self, 
         potentialSitesFixedCosts,
         facilityToCustomerCost,
-        # maxFacilities = None,
         mutationRate = 0.01,
         crossoverMaskRate = 0.4,
         eliteFraction = 1/3,
@@ -21,13 +20,11 @@ class UFLPGeneticProblem:
         maxGenerations = 4000,
         nRepeatParams = None,
         printProgress = False,
-        problemTitle = 'noTitle',
-        stoppingIndividual = None
+        problemTitle = 'noTitle'
     ):
 
         self.printProgress = printProgress
         self.problemTitle = problemTitle
-        self.stoppingIndividual = stoppingIndividual
 
         # GA Parameters
         self.populationSize = populationSize
@@ -36,7 +33,6 @@ class UFLPGeneticProblem:
         self.maxGenerations = maxGenerations
         self.mutationRate = mutationRate
         self.crossoverMaskRate = crossoverMaskRate
-        # self.maxFacilities = maxFacilities
         
         # Cache
         self.cacheSize = cacheParam * self.eliteSize
@@ -203,8 +199,6 @@ class UFLPGeneticProblem:
         self.fromPrevGeneration = np.ones((self.populationSize, ), dtype=np.bool)
     
     def finish(self):
-        if type(self.stoppingIndividual) == np.ndarray and (False not in (self.stoppingIndividual == self.population[0, :])):
-            return True
         if self.nRepeat == None:
             return self.generation >= self.maxGenerations
         return self.bestIndividualRepeatedTime > self.nRepeat or\

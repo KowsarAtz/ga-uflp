@@ -34,19 +34,21 @@ datasets += [('uncap/a-c/cap%s' % s, MAX_GENERATIONS['D'][0], MAX_GENERATIONS['D
 fileName = sys.argv[1]
 test_str = open(fileName,'r').read()
 
-print('dataset,runs,generations,avg reached,std reached,dimension,global Opt.,freq. %,avg time (s),std time')
+print('dataset,runs,generations,avg reached,std reached,dimension,global Opt.,freq. %,avg time (s),std time,avg reached time (s),std reached time')
 
 for dataset in datasets:
-    regex = r"%s[\s\S]*?last (\d*) times[\s\S]*?OPTIMAL OF (\d*.\d*)[\s\S]*?time: (\d*.\d*)$" % dataset[0]
+    regex = r"%s[\s\S]*?last (\d*) times[\s\S]*?OPTIMAL OF (\d*.\d*)[\s\S]*?total elapsed time: (\d*.\d*)[\s\S]*?best found elapsed time: (\d*.\d*)$" % dataset[0]
     matches = re.finditer(regex, test_str, re.MULTILINE)
     reached = []
     ti = []
+    bestTi = []
     optimal = None
     for matchNum, match in enumerate(matches, start=1):
         reached += [dataset[1] - int(match.group(1)) + 1]
         optimal = float(match.group(2))
         ti += [float(match.group(3))]
-    print('{dataset},{runs},{generations},{avgReached},{stdReached},{dimension},{globalOpt},{freq},{avgTime},{stdTime}'.format(
+        bestTi += [float(match.group(4))]
+    print('{dataset},{runs},{generations},{avgReached},{stdReached},{dimension},{globalOpt},{freq},{avgTime},{stdTime},{avgRTime},{stdRTime}'.format(
         dataset = dataset[0],
         generations = dataset[1],
         avgReached = round(avg(reached), 2),
@@ -56,5 +58,7 @@ for dataset in datasets:
         freq = 100,
         avgTime = round(avg(ti), 2),
         stdTime = round(stdev(ti), 2),
+        avgRTime = round(avg(bestTi), 2),
+        stdRTime = round(stdev(bestTi), 2),
         runs = 20
     ))

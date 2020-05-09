@@ -3,10 +3,10 @@ from processORLIB import getCostMatrices, getOptimals, compareResults
 import sys
 
 MAX_GENERATIONS = {
-    'A': 200,
-    'B': 400,
-    'C': 2000,
-    'D': 4000
+    'A': 20,
+    'B': 200,
+    'C': 1000,
+    'D': 3000
 }
 
 args = sys.argv[:]
@@ -35,8 +35,6 @@ datasets += [('uncap/130/cap13%d' % (i+1), MAX_GENERATIONS['C']) for i in range(
 
 # D: 100 * 1000
 datasets += [('uncap/a-c/cap%s' % s, MAX_GENERATIONS['D']) for s in ['a', 'b', 'c']]
-
-datasets = [('uncap/130/cap131', MAX_GENERATIONS['C'])]
 
 OPTIMAL = 'optimal'
 BELOWP2 = 'below 0.2'
@@ -93,6 +91,7 @@ for i in range(ITERATIONS):
             optimals = reached[dataset][OPTIMALPLAN],
             mainLoopElapsedTime = problem.mainLoopElapsedTime, 
             bestIndividualRepeatedTime = problem.bestIndividualRepeatedTime, 
+            bestFoundElapsedTime = problem.bestFoundElapsedTime,
             fout = f
         )
 

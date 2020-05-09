@@ -67,6 +67,7 @@ class UFLPGeneticProblem:
             self.nRepeat = ceil(self.nRepeatParams[0] * (self.totalCustomers * self.totalPotentialSites) ** self.nRepeatParams[1])
         self.generation = 1
         self.mainLoopElapsedTime = None
+        self.bestFoundElapsedTime = 0
         
         # PreScore Calculations
         for individualIndex in range(self.populationSize):
@@ -220,6 +221,7 @@ class UFLPGeneticProblem:
             self.replaceWeaks()
             self.sortAll()
             if self.score[0] != self.bestIndividual:
+                self.bestFoundElapsedTime = default_timer() - startTimeit
                 self.bestIndividualRepeatedTime = 0
                 self.bestIndividual = self.score[0]
             self.bestIndividualRepeatedTime += 1

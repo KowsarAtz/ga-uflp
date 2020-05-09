@@ -26,12 +26,14 @@ def getOptimals(orlibPath, orlibDataset):
     optimals = [int(string) for string in optimals[:-1]]
     return (optimals, optimalCost)
 
-def compareResults(orlibDatasetName, totalgGeneration, bestFoundCost, bestPlan, optimalCost, optimals, mainLoopElapsedTime, bestIndividualRepeatedTime, fout):
+def compareResults(orlibDatasetName, totalGeneration, bestFoundCost, bestPlan, optimalCost, optimals, mainLoopElapsedTime, bestIndividualRepeatedTime, fout):
+    reached = False
     print('\rdataset name:',orlibDatasetName, file=fout)
-    print('total generations of', totalgGeneration, file=fout)
+    print('total generations of', totalGeneration, file=fout)
     print('best individual score', bestFoundCost,\
             'repeated for last', bestIndividualRepeatedTime,'times', file=fout)
     if sorted(bestPlan) == sorted(optimals):
+        reached = True
         print('REACHED OPTIMAL OF', bestFoundCost, file=fout)
     else:
         errorPercentage = (bestFoundCost - optimalCost) * 100 / optimalCost
@@ -42,3 +44,4 @@ def compareResults(orlibDatasetName, totalgGeneration, bestFoundCost, bestPlan, 
         assignedFacilitiesString += str(f) + ' '
     print('assigned facilities:', file=fout)
     print(assignedFacilitiesString, file=fout)
+    return reached

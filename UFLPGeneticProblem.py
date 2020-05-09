@@ -19,8 +19,13 @@ class UFLPGeneticProblem:
         maxRank = 2.5,
         minRank = 0.712,
         maxGenerations = 4000,
-        nRepeatParams = None
+        nRepeatParams = None,
+        printProgress = False,
+        problemTitle = 'noTitle'
     ):
+
+        self.printProgress = printProgress
+        self.problemTitle = problemTitle
 
         # GA Parameters
         self.populationSize = populationSize
@@ -194,7 +199,7 @@ class UFLPGeneticProblem:
     def markElites(self):
         self.fromPrevGeneration = np.ones((self.populationSize, ), dtype=np.bool)
     
-    def finsih(self):
+    def finish(self):
         if self.nRepeat == None:
             return self.generation >= self.maxGenerations
         return self.bestIndividualRepeatedTime > self.nRepeat or\
@@ -207,6 +212,8 @@ class UFLPGeneticProblem:
 
         self.sortAll()
         while not self.finish():
+            if self.printProgress:
+                print('\r' + self.problemTitle, 'generation number %d' % self.generation, end='', file=stdout)
             self.updateRank()
             self.punishElites()
             self.markElites()
@@ -218,6 +225,9 @@ class UFLPGeneticProblem:
             self.bestIndividualRepeatedTime += 1
             self.generation += 1
         self.bestPlan = self.bestIndividualPlan(0)
+
+        if self.printProgress:
+            print('\r' + self.problemTitle, 'generation number %d' % self.generation, end='', file=stdout)
 
         # End Timing
         endTimeit = default_timer()

@@ -1,4 +1,5 @@
 from UFLPGeneticProblem import UFLPGeneticProblem as GA
+from processORLIB import getCostMatrices, getOptimals, compareResults
 import sys
 
 MAX_GENERATIONS = {
@@ -35,6 +36,8 @@ datasets += [('uncap/130/cap13%d' % (i+1), MAX_GENERATIONS['C']) for i in range(
 # D: 100 * 1000
 datasets += [('uncap/a-c/cap%s' % s, MAX_GENERATIONS['D']) for s in ['a', 'b', 'c']]
 
+datasets = [('uncap/130/cap131', MAX_GENERATIONS['C'])]
+
 OPTIMAL = 'optimal'
 BELOWP2 = 'below 0.2'
 BELOW1 = 'below 1'
@@ -46,6 +49,8 @@ TIMES = 'elapsed times'
 FIRSTREACHES = 'first reached generations'
 MAXGENERATION = 'max generation'
 BESTREPEATED = 'best individual repeated times'
+OPTIMALPLAN = 'optimal plan'
+OPTIMALCOST = 'optimal cost'
 lastFaild = 'NULL'
 
 reached = {}
@@ -53,6 +58,9 @@ for dataset in datasets:
     reached[dataset[0]] = {OPTIMAL: 0, BELOWP2: 0, BELOW1: 0, ABOVE1: 0,
                         BESTREPEATED: [], FIRSTREACHES: [], MAXGENERATION: dataset[1],
                         REACHED: [], FAILED: [], ERRORS: [], TIMES: []}
+    (optimals, optimalCost) = getOptimals(orlibPath = './reports/ORLIB/ORLIB-', orlibDataset = dataset[0])
+    reached[dataset[0]][OPTIMALCOST] = optimalCost
+    reached[dataset[0]][OPTIMALPLAN] = optimals
 
 totalReached = 0
 totalFailed = 0
@@ -65,27 +73,35 @@ for i in range(ITERATIONS):
         mxGen = dataset[1]
         dataset = dataset[0]
 
+        (costMatrix, costVector) = getCostMatrices(orlibPath = './reports/ORLIB/ORLIB-', orlibDataset = dataset)
+
         problem = GA(
-            orlibPath = './reports/ORLIB/ORLIB-', 
-            orlibDataset = dataset,
-            outputFile = f,
-            maxGenerations = mxGen, 
-            mutationRate = 0.01,
-            crossoverMaskRate = 0.4,
-            eliteFraction = 1/3,
-            printSummary = True,
-            populationSize = 150,
-            cacheParam = CACHE
+            potentialSitesFixedCosts = costVector,
+            facilityToCustomerCost = costMatrix,
+            maxGenerations = mxGen,
+            printProgress = True,
+            problemTitle = dataset
         )
-        
         problem.run()
         
-        error = problem.errorPercentage
+        reachedOptimal = compareResults(
+            orlibDatasetName = dataset,
+            totalGeneration = problem.generation,
+            bestFoundCost = problem.bestIndividual, 
+            bestPlan = problem.bestPlan, 
+            optimalCost = reached[dataset][OPTIMALCOST], 
+            optimals = reached[dataset][OPTIMALPLAN],
+            mainLoopElapsedTime = problem.mainLoopElapsedTime, 
+            bestIndividualRepeatedTime = problem.bestIndividualRepeatedTime, 
+            fout = f
+        )
+
+        error = (problem.bestIndividual - reached[dataset][OPTIMALCOST]) * 100 / reached[dataset][OPTIMALCOST]
         reached[dataset][TIMES] += [problem.mainLoopElapsedTime]
         reached[dataset][BESTREPEATED] += [problem.bestIndividualRepeatedTime]
         reached[dataset][FIRSTREACHES] += [mxGen - problem.bestIndividualRepeatedTime + 1]
         
-        if error == 0:
+        if reachedOptimal:
             totalReached += 1
             reached[dataset][OPTIMAL] += 1
             reached[dataset][REACHED] += [problem.score]

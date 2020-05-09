@@ -1,12 +1,13 @@
 from UFLPGeneticProblem import UFLPGeneticProblem as GA
 from processORLIB import getCostMatrices, getOptimals, compareResults
 import sys
+import numpy as np
 
 MAX_GENERATIONS = {
     'A': 20,
     'B': 200,
     'C': 1000,
-    'D': 3000
+    'D': 4000
 }
 
 args = sys.argv[:]
@@ -72,13 +73,18 @@ for i in range(ITERATIONS):
         dataset = dataset[0]
 
         (costMatrix, costVector) = getCostMatrices(orlibPath = './reports/ORLIB/ORLIB-', orlibDataset = dataset)
-
+        individualLength = costVector.shape[0]
+        individual = np.zeros((individualLength,), dtype=np.bool)
+        for i in reached[dataset][OPTIMALPLAN]:
+            individual[i] = True
+        
         problem = GA(
             potentialSitesFixedCosts = costVector,
             facilityToCustomerCost = costMatrix,
             maxGenerations = mxGen,
             printProgress = True,
-            problemTitle = dataset
+            problemTitle = dataset,
+            stoppingIndividual = individual
         )
         problem.run()
         

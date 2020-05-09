@@ -21,11 +21,13 @@ class UFLPGeneticProblem:
         maxGenerations = 4000,
         nRepeatParams = None,
         printProgress = False,
-        problemTitle = 'noTitle'
+        problemTitle = 'noTitle',
+        stoppingIndividual = None
     ):
 
         self.printProgress = printProgress
         self.problemTitle = problemTitle
+        self.stoppingIndividual = stoppingIndividual
 
         # GA Parameters
         self.populationSize = populationSize
@@ -59,7 +61,7 @@ class UFLPGeneticProblem:
         self.offspringsScore = np.empty((self.totalOffsprings, ))
         self.rank = np.ones((self.populationSize, ))
         self.fromPrevGeneration = np.zeros((self.populationSize, ), dtype=np.bool)
-        self.bestIndividual = None
+        self.bestIndividual = UFLPGeneticProblem.MAX_FLOAT
         self.bestIndividualRepeatedTime = 0
         self.duplicateIndices = []
         self.nRepeat = None
@@ -201,6 +203,8 @@ class UFLPGeneticProblem:
         self.fromPrevGeneration = np.ones((self.populationSize, ), dtype=np.bool)
     
     def finish(self):
+        if type(self.stoppingIndividual) == np.ndarray and (False not in (self.stoppingIndividual == self.population[0, :])):
+            return True
         if self.nRepeat == None:
             return self.generation >= self.maxGenerations
         return self.bestIndividualRepeatedTime > self.nRepeat or\

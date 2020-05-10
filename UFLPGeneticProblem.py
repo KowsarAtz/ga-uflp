@@ -59,7 +59,7 @@ class UFLPGeneticProblem:
         self.fromPrevGeneration = np.zeros((self.populationSize, ), dtype=np.bool)
         self.bestIndividual = UFLPGeneticProblem.MAX_FLOAT
         self.bestIndividualRepeatedTime = 0
-        self.duplicateIndices = []
+        self.duplicateIndices = np.zeros((self.populationSize, ), np.bool)
         self.nRepeat = None
         if nRepeatParams != None:
             self.nRepeat = ceil(self.nRepeatParams[0] * (self.totalCustomers * self.totalPotentialSites) ** self.nRepeatParams[1])
@@ -143,15 +143,18 @@ class UFLPGeneticProblem:
         self.sortOffsprings()
 
         # Replacement
-        offspringsIndex = 0
-        for dupIndex in self.duplicateIndices:
-            self.population[dupIndex, :] = self.offsprings[offspringsIndex, :]
-            self.score[dupIndex] = self.offspringsScore[offspringsIndex]
-            self.fromPrevGeneration[dupIndex] = False
-            offspringsIndex += 1
+        dupIndices = np.where(self.duplicateIndices == True)
+        dupIndicesCount = len(dupIndices[0])
+        self.population[dupIndices, :] = self.offsprings[:dupIndicesCount, :]
+        self.score[dupIndices] = self.offspringsScore[:dupIndicesCount]
+        self.fromPrevGeneration[dupIndices] = False
 
+        offspringsIndex = dupIndicesCount
         populationIndex = self.populationSize - 1
         while offspringsIndex < self.totalOffsprings:
+            if self.duplicateIndices[populationIndex]:
+                populationIndex -= 1
+                continue
             currentScore = self.score[populationIndex]
             newScore = self.offspringsScore[offspringsIndex]
             if newScore > currentScore:
@@ -184,15 +187,14 @@ class UFLPGeneticProblem:
         return False not in (self.population[indexA, :] == self.population[indexB, :])
         
     def updateRank(self):
-        self.duplicateIndices = []
+        self.duplicateIndices = np.zeros((self.populationSize, ), np.bool)
         currentRank = self.maxRank
         self.rank[0] = currentRank
         for individualIndex in range(1,self.populationSize):
             currentRank -= self.rankStep
             if self.identicalIndividuals(individualIndex, individualIndex - 1):
                 self.rank[individualIndex] = 0
-                if individualIndex < self.eliteSize:
-                    self.duplicateIndices = [individualIndex] + self.duplicateIndices
+                self.duplicateIndices[individualIndex] = True
             else:
                 self.rank[individualIndex] = currentRank    
     

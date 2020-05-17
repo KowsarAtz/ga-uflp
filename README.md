@@ -61,3 +61,9 @@ A numpy 2 dimensional array where ***facilityToCustomerCost[i,j]*** denotes the 
 
 ### ***potentialSitesFixedCosts***
 A numpy vector where ***potentialSitesFixedCosts[i]*** denotes the ***facility i*** fixed cost (cost of establishment).
+
+### ***maxGenerations***
+An upper bound on the total number of generations.
+    
+### ***nRepeat***
+Beside ***maxGenerations***, nRepeat is another termination parameter. The execution of the algorithm is terminated when the best individual of the population is not changed in ***nRepeat*** number of generations.

@@ -17,8 +17,8 @@ class UFLPGeneticProblem:
         cacheParam = 50,
         maxRank = 2.5,
         minRank = 0.712,
-        maxGenerations = 4000,
-        nRepeatParams = None,
+        maxGenerations = None,
+        nRepeat = None,
         printProgress = False,
         problemTitle = 'noTitle'
     ):
@@ -60,9 +60,7 @@ class UFLPGeneticProblem:
         self.bestIndividual = UFLPGeneticProblem.MAX_FLOAT
         self.bestIndividualRepeatedTime = 0
         self.duplicateIndices = np.zeros((self.populationSize, ), np.bool)
-        self.nRepeat = None
-        if nRepeatParams != None:
-            self.nRepeat = ceil(self.nRepeatParams[0] * (self.totalCustomers * self.totalPotentialSites) ** self.nRepeatParams[1])
+        self.nRepeat = nRepeat
         self.generation = 1
         self.mainLoopElapsedTime = None
         self.bestFoundElapsedTime = 0
@@ -202,10 +200,11 @@ class UFLPGeneticProblem:
         self.fromPrevGeneration = np.ones((self.populationSize, ), dtype=np.bool)
     
     def finish(self):
-        if self.nRepeat == None:
-            return self.generation >= self.maxGenerations
-        return self.bestIndividualRepeatedTime > self.nRepeat or\
-             self.generation >= self.maxGenerations
+        if self.maxGenerations != None and self.generation >= self.maxGenerations:
+            return True
+        if self.nRepeat != None and self.bestIndividualRepeatedTime >= self.nRepeat:
+            return True
+        return False
 
     def run(self):
         

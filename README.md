@@ -56,8 +56,8 @@ totalTime = ga.mainLoopElapsedTime()
 ## **Parameters**
 A brief explanation about problem-specific parameters of the class. ***(For GA-specific parameters and a more detailed explanation, visit this [Report](https://www.dropbox.com/s/gjujbn3a8hxv9i8/main.pdf?dl=0))*** :
 
-### ***potentialSitesFixedCosts***
-A numpy 2 dimensional array where ***potentialSitesFixedCosts[i,j]*** denotes the cost of the established link between ***facility i*** and ***customer j*** 
-
 ### ***facilityToCustomerCost***
-A numpy vector where ***facilityToCustomerCost[i]*** denotes the ***facility i*** fixed cost (cost of establishment).
+A numpy 2 dimensional array where ***facilityToCustomerCost[i,j]*** denotes the cost of the established link between ***facility i*** and ***customer j*** 
+
+### ***potentialSitesFixedCosts***
+A numpy vector where ***potentialSitesFixedCosts[i]*** denotes the ***facility i*** fixed cost (cost of establishment).

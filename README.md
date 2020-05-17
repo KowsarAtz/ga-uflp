@@ -49,7 +49,7 @@ bestPlan = ga.bestIndividualPlan()
 
 * Total Elapsed time of the execution time is also available:
 ```
-totalTime = ga.mainLoopElapsedTime()
+totalTime = ga.mainLoopElapsedTime
 ```
 
 

@@ -23,6 +23,9 @@ class UFLPGeneticProblem:
         problemTitle = 'noTitle'
     ):
 
+        if maxGenerations == None and nRepeat == None:
+            raise Exception("at least one of the termination paramters (maxGenerations/nRepeat) must be defined") 
+
         self.printProgress = printProgress
         self.problemTitle = problemTitle
 

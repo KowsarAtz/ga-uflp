@@ -166,7 +166,7 @@ class UFLPGeneticProblem:
             populationIndex -= 1
             offspringsIndex += 1
     
-    def bestIndividualPlan(self, individualIndex):
+    def bestIndividualPlan(self, individualIndex=0):
         openFacilites = np.where(self.population[individualIndex, :] == True)[0]
         plan = []
         for customerIndex in range(self.totalCustomers):

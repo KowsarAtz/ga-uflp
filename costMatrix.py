@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from random import sample
 
-SAMPLES_NO = 10
+SAMPLES_NO = 50
 
 inputFile = open('./reports/phaseTwoPartitioning/dataset/pa/csv/Dmatrix.txt', 'r')
 rowsCount = int(inputFile.readline())
@@ -30,7 +30,8 @@ ga = UFLPGeneticProblem(
     cacheParam = 50,
     maxRank = 2.5,
     minRank = 0.712,
-    maxGenerations = 1000,
+    maxGenerations = 400,
+    maxFacilities = 5,
     nRepeat = None,
     printProgress = True
 )

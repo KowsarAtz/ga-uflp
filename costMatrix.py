@@ -50,6 +50,5 @@ for facilityIndex in range(establishedFacilities.shape[0]):
     facility = establishedFacilities[facilityIndex]
     coveredNodes = customerNodes[np.where(np.array(ga.bestPlan) == facility)]
     plt.scatter(coveredNodes[:,0], coveredNodes[:,1], marker='.', linewidth=1, color=clrs[facilityIndex])
-    plt.scatter(facilityNodes[facility,0], facilityNodes[facility,1], marker='x', color='green')
+    plt.plot(facilityNodes[facility,0], facilityNodes[facility,1], marker='o', color=clrs[facilityIndex], markeredgecolor='black', markeredgewidth=1)
 plt.show()
-    

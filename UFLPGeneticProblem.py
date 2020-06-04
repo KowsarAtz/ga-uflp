@@ -144,8 +144,14 @@ class UFLPGeneticProblem:
         self.sortOffsprings()
 
         # Replacement
-        dupIndices = np.where(self.duplicateIndices == True)
-        dupIndicesCount = len(dupIndices[0])
+        dupIndices = np.where(self.duplicateIndices == True)[0]
+        dupIndicesCount = len(dupIndices)
+        if dupIndicesCount >= self.totalOffsprings:
+            dupIndices = dupIndices[-self.totalOffsprings:]
+            self.population[dupIndices, :] = self.offsprings
+            self.score[dupIndices] = self.offspringsScore
+            self.fromPrevGeneration[dupIndices] = False
+            return
         self.population[dupIndices, :] = self.offsprings[:dupIndicesCount, :]
         self.score[dupIndices] = self.offspringsScore[:dupIndicesCount]
         self.fromPrevGeneration[dupIndices] = False

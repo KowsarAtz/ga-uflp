@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from random import sample
 
-SAMPLES_NO = 200
+SAMPLES_NO = 10
 
 inputFile = open('./reports/phaseTwoPartitioning/dataset/pa/csv/Dmatrix.txt', 'r')
 rowsCount = int(inputFile.readline())
@@ -30,7 +30,7 @@ ga = UFLPGeneticProblem(
     cacheParam = 50,
     maxRank = 2.5,
     minRank = 0.712,
-    maxGenerations = 2000,
+    maxGenerations = 1000,
     nRepeat = None,
     printProgress = True
 )
@@ -40,11 +40,16 @@ bestIndividual = ga.population[0]
 bestPlan = ga.bestIndividualPlan()
 
 establishedFacilities = np.unique(ga.bestPlan)
-for facility in establishedFacilities:
-    coveredNodes = customerNodes[np.where(np.array(ga.bestPlan) == facility)]
-    plt.scatter(nodes[:,0], nodes[:,1], marker='.', linewidth=1)
-    plt.scatter(coveredNodes[:,0], coveredNodes[:,1], marker='.', linewidth=1, color='red')
-    plt.scatter(facilityNodes[facility,0], facilityNodes[facility,1], marker='x', color='green')
-    plt.show()
-    
+
 import seaborn as sns
+sns.reset_orig()
+clrs = sns.color_palette('husl', n_colors=establishedFacilities.shape[0])
+
+plt.scatter(nodes[:,0], nodes[:,1], marker='.', linewidth=1)
+for facilityIndex in range(establishedFacilities.shape[0]):
+    facility = establishedFacilities[facilityIndex]
+    coveredNodes = customerNodes[np.where(np.array(ga.bestPlan) == facility)]
+    plt.scatter(coveredNodes[:,0], coveredNodes[:,1], marker='.', linewidth=1, color=clrs[facilityIndex])
+    plt.scatter(facilityNodes[facility,0], facilityNodes[facility,1], marker='x', color='green')
+plt.show()
+    

@@ -1,4 +1,5 @@
 from UFLPGeneticProblem import UFLPGeneticProblem as GA
+from UFLPGAProblem import UFLPGAProblem as GA_T
 from processORLIB import getCostMatrices, getOptimals, compareResults
 import sys
 import numpy as np
@@ -77,12 +78,20 @@ for i in range(ITERATIONS):
         for i in reached[dataset][OPTIMALPLAN]:
             individual[i] = True
         
-        problem = GA(
+        # problem = GA(
+        #     potentialSitesFixedCosts = costVector,
+        #     facilityToCustomerCost = costMatrix,
+        #     maxGenerations = mxGen,
+        #     printProgress = True,
+        #     problemTitle = dataset
+        #     # stoppingIndividual = individual
+        # )
+        problem = GA_T(
             potentialSitesFixedCosts = costVector,
             facilityToCustomerCost = costMatrix,
-            maxGenerations = mxGen,
-            printProgress = True,
-            problemTitle = dataset
+            maxGenerations = mxGen
+            # printProgress = True,
+            # problemTitle = dataset
             # stoppingIndividual = individual
         )
         problem.run()
@@ -90,29 +99,37 @@ for i in range(ITERATIONS):
         reachedOptimal = compareResults(
             orlibDatasetName = dataset,
             totalGeneration = problem.generation,
-            bestFoundCost = problem.bestIndividual, 
+            bestFoundCost = problem.bestIndividualScore, 
             bestPlan = problem.bestPlan, 
             optimalCost = reached[dataset][OPTIMALCOST], 
             optimals = reached[dataset][OPTIMALPLAN],
-            mainLoopElapsedTime = problem.mainLoopElapsedTime, 
-            bestIndividualRepeatedTime = problem.bestIndividualRepeatedTime, 
-            bestFoundElapsedTime = problem.bestFoundElapsedTime,
+            mainLoopElapsedTime = 0,
+            bestIndividualRepeatedTime = 0,
+            bestFoundElapsedTime = 0,
+            # mainLoopElapsedTime = problem.mainLoopElapsedTime, 
+            # bestIndividualRepeatedTime = problem.bestIndividualRepeatedTime, 
+            # bestFoundElapsedTime = problem.bestFoundElapsedTime,
             fout = f
         )
 
-        error = (problem.bestIndividual - reached[dataset][OPTIMALCOST]) * 100 / reached[dataset][OPTIMALCOST]
-        reached[dataset][TIMES] += [problem.mainLoopElapsedTime]
-        reached[dataset][BESTREPEATED] += [problem.bestIndividualRepeatedTime]
-        reached[dataset][FIRSTREACHES] += [mxGen - problem.bestIndividualRepeatedTime + 1]
+        error = (problem.bestIndividualScore - reached[dataset][OPTIMALCOST]) * 100 / reached[dataset][OPTIMALCOST]
+        reached[dataset][TIMES] += [0]
+        # reached[dataset][TIMES] += [problem.mainLoopElapsedTime]
+        reached[dataset][BESTREPEATED] += [0]
+        # reached[dataset][BESTREPEATED] += [problem.bestIndividualRepeatedTime]
+        reached[dataset][FIRSTREACHES] += [mxGen - 0]
+        # reached[dataset][FIRSTREACHES] += [mxGen - problem.bestIndividualRepeatedTime + 1]
         
         if reachedOptimal:
             totalReached += 1
             reached[dataset][OPTIMAL] += 1
-            reached[dataset][REACHED] += [problem.score]
+            reached[dataset][REACHED] += [[]]
+            # reached[dataset][REACHED] += [problem.score]
         else:
             totalFailed += 1
             lastFaild = dataset
-            reached[dataset][FAILED] += [problem.score]
+            reached[dataset][FAILED] += [[]]
+            # reached[dataset][FAILED] += [problem.score]
             reached[dataset][ERRORS] += [error]
             if error < 0.2:
                 reached[dataset][BELOWP2] += 1

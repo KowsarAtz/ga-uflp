@@ -115,3 +115,16 @@ class UFLPGAProblem:
             )
             i += 2
         self.population[i:] = self.intermediatePopulation[i:]
+
+    def bestIndividualPlan(self, individual):
+        openFacilites = np.where(individual == True)[0]
+        plan = []
+        for customerIndex in range(self.totalCustomers):
+            openFacilityCosts = self.facilityToCustomerCost[openFacilites, customerIndex]
+            chosenFacilityIndex = np.where(openFacilityCosts == np.min(openFacilityCosts))[0][0]
+            plan += [openFacilites[chosenFacilityIndex]]
+        return plan
+
+    @property
+    def bestPlan(self):
+        return self.bestIndividualPlan(self.bestIndividual)

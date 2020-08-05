@@ -53,6 +53,9 @@ class UFLPGAProblem:
         # GA Main Loop
         self.generation = 1
         self.mainLoopElapsedTime = None
+        self.bestIndividualRepeatedTime = 1
+        self.startTimeit = None
+        self.bestFoundElapsedTime = None
                     
     def calculateScore(self, individualIndex=None, individual=None, save=True):
         if individualIndex != None:
@@ -91,13 +94,17 @@ class UFLPGAProblem:
         if bestScore < self.bestIndividualScore:
             self.bestIndividualScore = bestScore
             self.bestIndividual[:] = self.population[argBestScore, :]
+            self.bestIndividualRepeatedTime = 1
+            self.bestFoundElapsedTime = default_timer() - self.startTimeit
+        else:
+            self.bestIndividualRepeatedTime += 1
         if self.generation > self.maxGenerations:
             return True
         return False
 
     def run(self):
         # Start Timing
-        startTimeit = default_timer()
+        self.startTimeit = default_timer()
 
         while not self.finish():
             self.selection()
@@ -107,7 +114,7 @@ class UFLPGAProblem:
 
         # End Timing
         endTimeit = default_timer()
-        self.mainLoopElapsedTime = endTimeit - startTimeit
+        self.mainLoopElapsedTime = endTimeit - self.startTimeit
 
     def selection(self):
         for i in range(self.populationSize):
@@ -137,3 +144,7 @@ class UFLPGAProblem:
     @property
     def bestPlan(self):
         return self.bestIndividualPlan(self.bestIndividual)
+
+    @property
+    def score(self):
+        return np.array([self.calculateScore(i) for i in range(self.populationSize)])

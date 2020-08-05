@@ -34,7 +34,7 @@ class UFLPGAProblem:
         self.potentialSitesFixedCosts = potentialSitesFixedCosts
         self.facilityToCustomerCost = facilityToCustomerCost
         self.totalPotentialSites = self.facilityToCustomerCost.shape[0]
-        # self.totalCustomers = self.facilityToCustomerCost.shape[1]
+        self.totalCustomers = self.facilityToCustomerCost.shape[1]
 
         # Population Random Initialization
         if maxFacilities == None:
@@ -69,7 +69,7 @@ class UFLPGAProblem:
     def uniformCrossoverOffspring(self, indexA=None, indexB=None, parentA=None, parentB=None):
         crossoverMask = np.random.choice(a=[True, False], size=(self.totalPotentialSites,), p=[self.crossoverMaskRate, 1-self.crossoverMaskRate])
         crossoverMaskComplement = np.invert(crossoverMask)
-        if parentA == None:
+        if indexA != None:
             parentA = self.population[indexA,:]
             parentB = self.population[indexB,:]
         return (
@@ -79,13 +79,13 @@ class UFLPGAProblem:
 
     def mutateOffspring(self):      
         mutationRate = self.mutationRate
-        mask =  np.random.choice(a=[True, False], size=(self.totalOffsprings, self.totalPotentialSites), p=[mutationRate, 1-mutationRate])
+        mask =  np.random.choice(a=[True, False], size=(self.populationSize, self.totalPotentialSites), p=[mutationRate, 1-mutationRate])
         self.population = self.population != mask
 
     def finish(self):
         scores = [self.calculateScore(individualIndex=i) for i in range(self.populationSize)]
         argBestScore = np.argmin(scores)
-        bestScore = scores(argBestScore)
+        bestScore = scores[argBestScore]
         if bestScore < self.bestIndividualScore:
             self.bestIndividualScore = bestScore
             self.bestIndividual[:] = self.population[argBestScore, :]
@@ -104,7 +104,7 @@ class UFLPGAProblem:
         for i in range(self.populationSize):
             tournamentIndices = sample(range(self.populationSize), self.tournamentSize)
             scores = [self.calculateScore(individualIndex=i) for i in tournamentIndices]
-            self.intermediatePopulation[i] = self.population[tournamentIndices(np.argmin(scores))]
+            self.intermediatePopulation[i] = self.population[tournamentIndices[np.argmin(scores)]]
 
     def reproduction(self):
         i = 0

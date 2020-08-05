@@ -19,7 +19,7 @@ ITERATIONS = int(args[2])
 datasets = []
 
 # A: 16 * 50 (n. o. potential facility locations * n. o. customers)
-datasets += [('cap/40/cap4%d' % (i+1), MAX_GENERATIONS['A']) for i in range(4)]
+# datasets += [('cap/40/cap4%d' % (i+1), MAX_GENERATIONS['A']) for i in range(4)]
 # datasets += [('cap/50/cap51', MAX_GENERATIONS['A'])]
 # datasets += [('cap/60/cap6%d' % (i+1), MAX_GENERATIONS['A']) for i in range(4)]
 # datasets += [('uncap/70/cap7%d' % (i+1), MAX_GENERATIONS['A']) for i in range(4)]
@@ -32,7 +32,7 @@ datasets += [('cap/40/cap4%d' % (i+1), MAX_GENERATIONS['A']) for i in range(4)]
 # C: 50 * 50
 # datasets += [('cap/110/cap11%d' % (i+1), MAX_GENERATIONS['C']) for i in range(4)]
 # datasets += [('cap/120/cap12%d' % (i+1), MAX_GENERATIONS['C']) for i in range(4)]
-# datasets += [('uncap/130/cap13%d' % (i+1), MAX_GENERATIONS['C']) for i in range(4)]
+datasets += [('uncap/130/cap13%d' % (i+1), MAX_GENERATIONS['C']) for i in range(4)]
 
 # D: 100 * 1000
 # datasets += [('uncap/a-c/cap%s' % s, MAX_GENERATIONS['D']) for s in ['a', 'b', 'c']]
@@ -78,22 +78,22 @@ for i in range(ITERATIONS):
         for i in reached[dataset][OPTIMALPLAN]:
             individual[i] = True
         
-        # problem = GA(
-        #     potentialSitesFixedCosts = costVector,
-        #     facilityToCustomerCost = costMatrix,
-        #     maxGenerations = mxGen,
-        #     printProgress = True,
-        #     problemTitle = dataset
-        #     # stoppingIndividual = individual
-        # )
-        problem = GA_T(
+        problem = GA(
             potentialSitesFixedCosts = costVector,
             facilityToCustomerCost = costMatrix,
-            maxGenerations = mxGen
-            # printProgress = True,
-            # problemTitle = dataset
+            maxGenerations = mxGen,
+            printProgress = True,
+            problemTitle = dataset
             # stoppingIndividual = individual
         )
+        # problem = GA_T(
+        #     potentialSitesFixedCosts = costVector,
+        #     facilityToCustomerCost = costMatrix,
+        #     maxGenerations = mxGen
+        #     # printProgress = True,
+        #     # problemTitle = dataset
+        #     # stoppingIndividual = individual
+        # )
         problem.run()
         
         reachedOptimal = compareResults(
@@ -103,18 +103,16 @@ for i in range(ITERATIONS):
             bestPlan = problem.bestPlan, 
             optimalCost = reached[dataset][OPTIMALCOST], 
             optimals = reached[dataset][OPTIMALPLAN],
-            mainLoopElapsedTime = 0,
+            mainLoopElapsedTime = problem.mainLoopElapsedTime, 
             bestIndividualRepeatedTime = 0,
             bestFoundElapsedTime = 0,
-            # mainLoopElapsedTime = problem.mainLoopElapsedTime, 
             # bestIndividualRepeatedTime = problem.bestIndividualRepeatedTime, 
             # bestFoundElapsedTime = problem.bestFoundElapsedTime,
             fout = f
         )
 
         error = (problem.bestIndividualScore - reached[dataset][OPTIMALCOST]) * 100 / reached[dataset][OPTIMALCOST]
-        reached[dataset][TIMES] += [0]
-        # reached[dataset][TIMES] += [problem.mainLoopElapsedTime]
+        reached[dataset][TIMES] += [problem.mainLoopElapsedTime]
         reached[dataset][BESTREPEATED] += [0]
         # reached[dataset][BESTREPEATED] += [problem.bestIndividualRepeatedTime]
         reached[dataset][FIRSTREACHES] += [mxGen - 0]

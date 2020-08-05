@@ -1,5 +1,6 @@
 import numpy as np
 from math import ceil
+from timeit import default_timer
 from pylru import lrucache
 from random import sample
 
@@ -12,7 +13,7 @@ class UFLPGAProblem:
         mutationRate = 0.005,
         crossoverRate = 0.75,
         crossoverMaskRate = 0.4,
-        populationSize = 100,
+        populationSize = 150,
         tournamentSize = 3,
         cacheParam = 10,
         maxGenerations = None,
@@ -51,6 +52,7 @@ class UFLPGAProblem:
 
         # GA Main Loop
         self.generation = 1
+        self.mainLoopElapsedTime = None
                     
     def calculateScore(self, individualIndex=None, individual=None, save=True):
         if individualIndex != None:
@@ -94,12 +96,19 @@ class UFLPGAProblem:
         return False
 
     def run(self):
+        # Start Timing
+        startTimeit = default_timer()
+
         while not self.finish():
             self.selection()
             self.reproduction()
             self.mutateOffspring()
             self.generation += 1
-    
+
+        # End Timing
+        endTimeit = default_timer()
+        self.mainLoopElapsedTime = endTimeit - startTimeit
+
     def selection(self):
         for i in range(self.populationSize):
             tournamentIndices = sample(range(self.populationSize), self.tournamentSize)

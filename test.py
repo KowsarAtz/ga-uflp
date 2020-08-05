@@ -92,9 +92,10 @@ for i in range(ITERATIONS):
         problem = GA_T(
             potentialSitesFixedCosts = costVector,
             facilityToCustomerCost = costMatrix,
-            maxGenerations = mxGen
-            # printProgress = True,
-            # problemTitle = dataset
+            maxGenerations = mxGen,
+            printProgress = True,
+            problemTitle = dataset,
+            # mutationRate = 0.01
             # stoppingIndividual = individual
         )
         problem.run()

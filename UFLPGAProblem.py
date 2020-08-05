@@ -2,6 +2,7 @@ import numpy as np
 from math import ceil
 from timeit import default_timer
 from pylru import lrucache
+from sys import stdout
 from random import sample
 
 class UFLPGAProblem:
@@ -18,7 +19,12 @@ class UFLPGAProblem:
         cacheParam = 10,
         maxGenerations = None,
         maxFacilities = None,
+        printProgress = False,
+        problemTitle = 'noTitle'
     ):
+        self.printProgress = printProgress
+        self.problemTitle = problemTitle
+
         # GA Parameters
         self.populationSize = populationSize
         self.totalCrossoverOffspring = ceil(crossoverRate*populationSize)
@@ -98,7 +104,9 @@ class UFLPGAProblem:
             self.bestFoundElapsedTime = default_timer() - self.startTimeit
         else:
             self.bestIndividualRepeatedTime += 1
-        if self.generation > self.maxGenerations:
+        if self.printProgress:
+                print('\r' + self.problemTitle, 'generation number %d' % self.generation, end='', file=stdout)
+        if self.generation >= self.maxGenerations:
             return True
         return False
 

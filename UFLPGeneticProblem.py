@@ -69,7 +69,7 @@ class UFLPGeneticProblem:
         self.offspringsScore = np.empty((self.totalOffsprings, ))
         self.rank = np.ones((self.populationSize, ))
         self.fromPrevGeneration = np.zeros((self.populationSize, ), dtype=np.bool)
-        self.bestIndividual = UFLPGeneticProblem.MAX_FLOAT
+        self.bestIndividualScore = UFLPGeneticProblem.MAX_FLOAT
         self.bestIndividualRepeatedTime = 0
         self.duplicateIndices = np.zeros((self.populationSize, ), np.bool)
         self.nRepeat = nRepeat
@@ -270,10 +270,10 @@ class UFLPGeneticProblem:
             self.markElites()
             self.replaceWeaks()
             self.sortAll()
-            if self.score[0] != self.bestIndividual:
+            if self.score[0] != self.bestIndividualScore:
                 self.bestFoundElapsedTime = default_timer() - startTimeit
                 self.bestIndividualRepeatedTime = 0
-                self.bestIndividual = self.score[0]
+                self.bestIndividualScore = self.score[0]
             self.bestIndividualRepeatedTime += 1
             self.generation += 1
         self.bestPlan = self.bestIndividualPlan(0)

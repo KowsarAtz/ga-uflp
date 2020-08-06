@@ -58,10 +58,15 @@ class UFLPGAProblem:
 
         # GA Main Loop
         self.generation = 1
-        self.mainLoopElapsedTime = None
         self.bestIndividualRepeatedTime = 1
         self.startTimeit = None
         self.bestFoundElapsedTime = None
+
+        # Timing
+        self.mainLoopElapsedTime = None
+        self.selectionTime = 0
+        self.recombinationTime = 0
+        self.mutationTime = 0
                     
     def calculateScore(self, individualIndex=None, individual=None, save=True):
         if individualIndex != None:
@@ -115,9 +120,21 @@ class UFLPGAProblem:
         self.startTimeit = default_timer()
 
         while not self.finish():
+            # Selection
+            tempTime = default_timer()
             self.selection()
-            self.reproduction()
+            self.selectionTime += default_timer() - tempTime
+            
+            # Recombination
+            tempTime = default_timer()
+            self.recombination()
+            self.recombinationTime += default_timer() - tempTime
+            
+            # Mutation
+            tempTime = default_timer()
             self.mutateOffspring()
+            self.mutationTime += default_timer() - tempTime
+
             self.generation += 1
 
         # End Timing
@@ -130,7 +147,7 @@ class UFLPGAProblem:
             scores = [self.calculateScore(individualIndex=i) for i in tournamentIndices]
             self.intermediatePopulation[i] = self.population[tournamentIndices[np.argmin(scores)]]
 
-    def reproduction(self):
+    def recombination(self):
         i = 0
         while i < self.totalCrossoverOffspring - 1:
             self.population[i], self.population[i+1] = self.uniformCrossoverOffspring(

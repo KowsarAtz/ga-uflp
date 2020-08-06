@@ -3,7 +3,7 @@ from math import ceil
 from timeit import default_timer
 from pylru import lrucache
 from sys import stdout
-from random import sample
+from random import sample, randint
 
 class UFLPGAProblem:
     MAX_FLOAT = np.finfo(np.float64).max
@@ -98,6 +98,31 @@ class UFLPGAProblem:
             crossoverMask * parentB + crossoverMaskComplement * parentA
         )
 
+    def balancedCrossoverOffspring(self, indexA=None, indexB=None, parentA=None, parentB=None):
+        if indexA != None:
+            parentA = self.population[indexA,:]
+            parentB = self.population[indexB,:]
+        
+        offspringA = parentA * parentB
+        offspringB = offspringA.copy()
+        
+        diff = self.maxFacilities - np.sum(offspringA)
+        if diff <= 0: return offspringA, offspringB
+        
+        otherCandidates = parentA != parentB
+        otherCandidateIndices = list(np.where(otherCandidates == True)[0])
+        if len(otherCandidateIndices) == 0: return offspringA, offspringB
+        
+        newFacilitiesCount = randint(0, diff)
+        chosenIndices = sample(otherCandidateIndices, min(newFacilitiesCount, len(otherCandidateIndices)))
+        offspringA[chosenIndices] = True
+        
+        newFacilitiesCount = randint(0, diff)   
+        chosenIndices = sample(otherCandidateIndices, min(newFacilitiesCount, len(otherCandidateIndices)))
+        offspringB[chosenIndices] = True     
+        
+        return offspringA, offspringB
+
     def mutateOffspring(self):      
         mutationRate = self.mutationRate
         mask =  np.random.choice(a=[True, False], size=(self.populationSize, self.totalPotentialSites), p=[mutationRate, 1-mutationRate])
@@ -121,10 +146,15 @@ class UFLPGAProblem:
             return True
         if self.nRepeat != None and self.bestIndividualRepeatedTime >= self.nRepeat:
             return True
-            
+
         return False
 
     def run(self):
+        if self.maxFacilities == None:
+            self.crossover = self.uniformCrossoverOffspring
+        else:
+            self.crossover = self.balancedCrossoverOffspring
+
         # Start Timing
         self.startTimeit = default_timer()
 
@@ -140,9 +170,10 @@ class UFLPGAProblem:
             self.recombinationTime += default_timer() - tempTime
             
             # Mutation
-            tempTime = default_timer()
-            self.mutateOffspring()
-            self.mutationTime += default_timer() - tempTime
+            if self.maxFacilities == None:
+                tempTime = default_timer()
+                self.mutateOffspring()
+                self.mutationTime += default_timer() - tempTime
 
             self.generation += 1
 
@@ -159,7 +190,7 @@ class UFLPGAProblem:
     def recombination(self):
         i = 0
         while i < self.totalCrossoverOffspring - 1:
-            self.population[i], self.population[i+1] = self.uniformCrossoverOffspring(
+            self.population[i], self.population[i+1] = self.crossover(
                 parentA=self.intermediatePopulation[i],
                 parentB=self.intermediatePopulation[i+1]
             )

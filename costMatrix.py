@@ -18,18 +18,33 @@ facilityNodes = nodes[sampleIndices]
 customerNodes = nodes[[i for i in range(costMatrix.shape[1]) if i not in sampleIndices]]
 
 from UFLPGeneticProblem import UFLPGeneticProblem
+from UFLPGAProblem import UFLPGAProblem
 
-ga = UFLPGeneticProblem(
+# ga = UFLPGeneticProblem(
+#     np.zeros((SAMPLES_NO, ), np.float64), #potentialSitesFixedCosts
+#     facilityToCustomerCost,
+#     mutationRate = 0.01,
+#     crossoverMaskRate = 0.4,
+#     eliteFraction = 1/3,
+#     populationSize = 150,
+#     cacheParam = 50,
+#     maxRank = 2.5,
+#     minRank = 0.712,
+#     maxGenerations = 400,
+#     maxFacilities = 5,
+#     nRepeat = None,
+#     printProgress = True
+# )
+
+ga = UFLPGAProblem(
     np.zeros((SAMPLES_NO, ), np.float64), #potentialSitesFixedCosts
     facilityToCustomerCost,
     mutationRate = 0.01,
     crossoverMaskRate = 0.4,
-    eliteFraction = 1/3,
+    crossoverRate = 0.75,
     populationSize = 150,
     cacheParam = 50,
-    maxRank = 2.5,
-    minRank = 0.712,
-    maxGenerations = 400,
+    maxGenerations = 800,
     maxFacilities = 5,
     nRepeat = None,
     printProgress = True
@@ -37,7 +52,8 @@ ga = UFLPGeneticProblem(
 
 ga.run()
 bestIndividual = ga.population[0]
-bestPlan = ga.bestIndividualPlan()
+# bestPlan = ga.bestIndividualPlan()
+bestPlan = ga.bestPlan
 
 establishedFacilities = np.unique(ga.bestPlan)
 

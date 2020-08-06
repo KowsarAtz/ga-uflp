@@ -18,10 +18,14 @@ class UFLPGAProblem:
         tournamentSize = 3,
         cacheParam = 10,
         maxGenerations = None,
+        nRepeat = None,
         maxFacilities = None,
         printProgress = False,
         problemTitle = 'noTitle'
     ):
+        if maxGenerations == None and nRepeat == None:
+            raise Exception("at least one of the termination paramters (maxGenerations/nRepeat) must be defined") 
+
         self.printProgress = printProgress
         self.problemTitle = problemTitle
 
@@ -30,6 +34,7 @@ class UFLPGAProblem:
         self.totalCrossoverOffspring = ceil(crossoverRate*populationSize)
         self.crossoverMaskRate = crossoverMaskRate
         self.maxGenerations = maxGenerations
+        self.nRepeat = nRepeat
         self.mutationRate = mutationRate
         self.maxFacilities = maxFacilities
         self.tournamentSize = tournamentSize
@@ -111,8 +116,12 @@ class UFLPGAProblem:
             self.bestIndividualRepeatedTime += 1
         if self.printProgress:
                 print('\r' + self.problemTitle, 'generation number %d' % self.generation, end='', file=stdout)
-        if self.generation >= self.maxGenerations:
+        
+        if self.maxGenerations != None and self.generation >= self.maxGenerations:
             return True
+        if self.nRepeat != None and self.bestIndividualRepeatedTime >= self.nRepeat:
+            return True
+            
         return False
 
     def run(self):

@@ -5,8 +5,11 @@ from pylru import lrucache
 from sys import stdout
 from random import sample, randint
 
+T_SELECTION = 'tournament'
+R_SELECTION = 'rank-based-roulette-wheel'
+MAX_FLOAT = np.finfo(np.float64).max
+
 class UFLPGAProblem:
-    MAX_FLOAT = np.finfo(np.float64).max
     def __init__(
         self, 
         potentialSitesFixedCosts,
@@ -21,6 +24,7 @@ class UFLPGAProblem:
         nRepeat = None,
         maxFacilities = None,
         printProgress = False,
+        selectionMethod = T_SELECTION, # OR R_SELECTION
         problemTitle = 'noTitle'
     ):
         if maxGenerations == None and nRepeat == None:
@@ -28,6 +32,7 @@ class UFLPGAProblem:
 
         self.printProgress = printProgress
         self.problemTitle = problemTitle
+        self.selectionMethod = selectionMethod
 
         # GA Parameters
         self.populationSize = populationSize
@@ -59,7 +64,7 @@ class UFLPGAProblem:
         # Tournament Selection
         self.intermediatePopulation = np.empty_like(self.population)
         self.bestIndividual = np.empty_like(self.population[0])
-        self.bestIndividualScore = UFLPGAProblem.MAX_FLOAT
+        self.bestIndividualScore = MAX_FLOAT
 
         # GA Main Loop
         self.generation = 1
@@ -79,10 +84,10 @@ class UFLPGAProblem:
         cacheKey = individual.tobytes()
         if cacheKey in self.cache:
             return self.cache.peek(cacheKey)
-        openFacilites = np.where(individual == True)[0]
-        if openFacilites.shape[0] == 0: 
-            return UFLPGAProblem.MAX_FLOAT
-        score = np.sum(np.amin(self.facilityToCustomerCost[openFacilites, :], axis=0))
+        openFacilities = np.where(individual == True)[0]
+        if openFacilities.shape[0] == 0: 
+            return MAX_FLOAT
+        score = np.sum(np.amin(self.facilityToCustomerCost[openFacilities, :], axis=0))
         score += self.potentialSitesFixedCosts.dot(individual)
         if save: self.cache[cacheKey] = score
         return score
@@ -155,6 +160,11 @@ class UFLPGAProblem:
         else:
             self.crossover = self.balancedCrossoverOffspring
 
+        if self.selectionMethod == T_SELECTION:
+            self.selection = self.tournamentSelection
+        else:
+            pass
+
         # Start Timing
         self.startTimeit = default_timer()
 
@@ -181,11 +191,15 @@ class UFLPGAProblem:
         endTimeit = default_timer()
         self.mainLoopElapsedTime = endTimeit - self.startTimeit
 
-    def selection(self):
+    def tournamentSelection(self):
         for i in range(self.populationSize):
             tournamentIndices = sample(range(self.populationSize), self.tournamentSize)
             scores = [self.calculateScore(individualIndex=i) for i in tournamentIndices]
             self.intermediatePopulation[i] = self.population[tournamentIndices[np.argmin(scores)]]
+
+    def rankBasedRWSelection(self):
+        pass
+
 
     def recombination(self):
         i = 0
@@ -198,12 +212,12 @@ class UFLPGAProblem:
         self.population[i:] = self.intermediatePopulation[i:]
 
     def bestIndividualPlan(self, individual):
-        openFacilites = np.where(individual == True)[0]
+        openFacilities = np.where(individual == True)[0]
         plan = []
         for customerIndex in range(self.totalCustomers):
-            openFacilityCosts = self.facilityToCustomerCost[openFacilites, customerIndex]
+            openFacilityCosts = self.facilityToCustomerCost[openFacilities, customerIndex]
             chosenFacilityIndex = np.where(openFacilityCosts == np.min(openFacilityCosts))[0][0]
-            plan += [openFacilites[chosenFacilityIndex]]
+            plan += [openFacilities[chosenFacilityIndex]]
         return plan
 
     @property

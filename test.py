@@ -95,6 +95,7 @@ for i in range(ITERATIONS):
             maxGenerations = mxGen,
             printProgress = True,
             problemTitle = dataset,
+            selectionMethod = 'tournament',
             # mutationRate = 0.01
             # stoppingIndividual = individual
         )

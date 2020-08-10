@@ -47,7 +47,8 @@ ga = UFLPGAProblem(
     maxGenerations = 800,
     maxFacilities = 5,
     nRepeat = None,
-    printProgress = True
+    printProgress = True, 
+    selectionMethod = 'tournament'
 )
 
 ga.run()

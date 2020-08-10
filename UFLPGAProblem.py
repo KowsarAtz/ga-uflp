@@ -19,6 +19,9 @@ class UFLPGAProblem:
         crossoverMaskRate = 0.4,
         populationSize = 150,
         tournamentSize = 3,
+        eliteFraction = 1/3,
+        maxRank = 2.5,
+        minRank = 0.712,
         cacheParam = 10,
         maxGenerations = None,
         nRepeat = None,
@@ -36,7 +39,7 @@ class UFLPGAProblem:
 
         # GA Parameters
         self.populationSize = populationSize
-        self.totalCrossoverOffspring = ceil(crossoverRate*populationSize)
+        self.crossoverRate = crossoverRate
         self.crossoverMaskRate = crossoverMaskRate
         self.maxGenerations = maxGenerations
         self.nRepeat = nRepeat
@@ -61,10 +64,14 @@ class UFLPGAProblem:
             for i in range(self.populationSize):
                 self.population[i, sample(range(self.totalPotentialSites), maxFacilities)] = True
         
-        # Tournament Selection
+        # Tournament/Rank-BasedRW Selection
         self.intermediatePopulation = np.empty_like(self.population)
         self.bestIndividual = np.empty_like(self.population[0])
         self.bestIndividualScore = MAX_FLOAT
+
+        # Rank-BasedRW Selection
+        if self.selectionMethod == R_SELECTION:
+            self.fitness = np.empty((self.populationSize, ), np.float64)
 
         # GA Main Loop
         self.generation = 1
@@ -162,8 +169,8 @@ class UFLPGAProblem:
 
         if self.selectionMethod == T_SELECTION:
             self.selection = self.tournamentSelection
-        else:
-            pass
+        elif self.selectionMethod == R_SELECTION:
+            self.selection = self.rankBasedRWSelection
 
         # Start Timing
         self.startTimeit = default_timer()
@@ -198,18 +205,23 @@ class UFLPGAProblem:
             self.intermediatePopulation[i] = self.population[tournamentIndices[np.argmin(scores)]]
 
     def rankBasedRWSelection(self):
-        pass
-
+        sortArgs = self.score.argsort()
+        self.population = self.population[sortArgs]
 
     def recombination(self):
         i = 0
-        while i < self.totalCrossoverOffspring - 1:
-            self.population[i], self.population[i+1] = self.crossover(
-                parentA=self.intermediatePopulation[i],
-                parentB=self.intermediatePopulation[i+1]
-            )
+        while i < self.intermediatePopulation.shape[0] - 1:
+            if np.random.uniform() < self.crossoverRate:
+                self.population[i], self.population[i+1] = self.crossover(
+                    parentA=self.intermediatePopulation[i],
+                    parentB=self.intermediatePopulation[i+1]
+                )
+            else:
+                self.population[i:i+2] = self.intermediatePopulation[i:i+2]
             i += 2
-        self.population[i:] = self.intermediatePopulation[i:]
+        if i == self.intermediatePopulation.shape[0] - 1:
+            self.population[i:] = self.intermediatePopulation[i:]
+        
 
     def bestIndividualPlan(self, individual):
         openFacilities = np.where(individual == True)[0]

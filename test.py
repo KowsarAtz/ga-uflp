@@ -1,5 +1,5 @@
 from UFLPGeneticProblem import UFLPGeneticProblem as GA
-from UFLPGAProblem import UFLPGAProblem as GA_T
+from UFLPGAProblem import UFLPGAProblem as GA_T, R_SELECTION, T_SELECTION
 from processORLIB import getCostMatrices, getOptimals, compareResults
 import sys
 import numpy as np
@@ -95,7 +95,8 @@ for i in range(ITERATIONS):
             maxGenerations = mxGen,
             printProgress = True,
             problemTitle = dataset,
-            selectionMethod = 'tournament',
+            selectionMethod = T_SELECTION,
+            # selectionMethod = R_SELECTION
             # mutationRate = 0.01
             # stoppingIndividual = individual
         )

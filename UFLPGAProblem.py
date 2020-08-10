@@ -5,8 +5,8 @@ from pylru import lrucache
 from sys import stdout
 from random import sample, randint
 
-T_SELECTION = 'tournament'
-R_SELECTION = 'rank-based-roulette-wheel'
+T_SELECTION = 0
+R_SELECTION = 1
 MAX_FLOAT = np.finfo(np.float64).max
 
 class UFLPGAProblem:
@@ -64,20 +64,26 @@ class UFLPGAProblem:
             for i in range(self.populationSize):
                 self.population[i, sample(range(self.totalPotentialSites), maxFacilities)] = True
         
-        # Tournament/Rank-BasedRW Selection
-        self.intermediatePopulation = np.empty_like(self.population)
-        self.bestIndividual = np.empty_like(self.population[0])
-        self.bestIndividualScore = MAX_FLOAT
+        # Tournament Selection
+        if self.selectionMethod == T_SELECTION:
+            self.intermediatePopulation = np.empty_like(self.population)
+            self.bestIndividualT = np.empty_like(self.population[0])
 
         # Rank-BasedRW Selection
-        if self.selectionMethod == R_SELECTION:
+        elif self.selectionMethod == R_SELECTION:
+            self.eliteSize = ceil(eliteFraction*self.populationSize)
+            self.intermediatePopulation = np.empty((self.populationSize-self.eliteSize, self.population.shape[1]), np.float64)
             self.fitness = np.empty((self.populationSize, ), np.float64)
+            self.maxRank = maxRank
+            self.minRank = minRank
+            self.rankStep = (self.maxRank-self.minRank)/(self.populationSize-1)
 
         # GA Main Loop
         self.generation = 1
         self.bestIndividualRepeatedTime = 1
         self.startTimeit = None
         self.bestFoundElapsedTime = None
+        self.bestIndividualScore = MAX_FLOAT
 
         # Timing
         self.mainLoopElapsedTime = None
@@ -136,21 +142,31 @@ class UFLPGAProblem:
         return offspringA, offspringB
 
     def mutateOffspring(self):      
+        j = 0
+        if self.selectionMethod == R_SELECTION: j = self.eliteSize
         mutationRate = self.mutationRate
-        mask =  np.random.choice(a=[True, False], size=(self.populationSize, self.totalPotentialSites), p=[mutationRate, 1-mutationRate])
-        self.population = self.population != mask
+        mask =  np.random.choice(a=[True, False], size=(self.populationSize-j, self.totalPotentialSites), p=[mutationRate, 1-mutationRate])
+        self.population[j:] = self.population[j:] != mask
 
     def finish(self):
-        scores = [self.calculateScore(individualIndex=i) for i in range(self.populationSize)]
-        argBestScore = np.argmin(scores)
-        bestScore = scores[argBestScore]
+        if self.selectionMethod == R_SELECTION:
+            sortArgs = self.score.argsort()
+            self.population = self.population[sortArgs]
+            bestScore = self.calculateScore(0)
+        elif self.selectionMethod == T_SELECTION:
+            scores = self.score
+            argBestScore = np.argmin(scores)
+            bestScore = scores[argBestScore]
+
         if bestScore < self.bestIndividualScore:
             self.bestIndividualScore = bestScore
-            self.bestIndividual[:] = self.population[argBestScore, :]
+            if self.selectionMethod == T_SELECTION:
+                self.bestIndividualT[:] = self.population[argBestScore, :]
             self.bestIndividualRepeatedTime = 1
             self.bestFoundElapsedTime = default_timer() - self.startTimeit
         else:
             self.bestIndividualRepeatedTime += 1
+
         if self.printProgress:
                 print('\r' + self.problemTitle, 'generation number %d' % self.generation, end='', file=stdout)
         
@@ -204,23 +220,50 @@ class UFLPGAProblem:
             scores = [self.calculateScore(individualIndex=i) for i in tournamentIndices]
             self.intermediatePopulation[i] = self.population[tournamentIndices[np.argmin(scores)]]
 
+    def identicalIndividuals(self, indexA, indexB):
+        return False not in (self.population[indexA, :] == self.population[indexB, :])
+
     def rankBasedRWSelection(self):
-        sortArgs = self.score.argsort()
-        self.population = self.population[sortArgs]
+        # Assign Fitnesses
+        currentRank = self.maxRank
+        for i in range(self.populationSize):
+            if self.identicalIndividuals(i, i - 1):
+                self.fitness[i] = 0
+            self.fitness[i] = currentRank
+            currentRank -= self.rankStep
+        avgFitness = np.average(self.fitness)
+        # Punish Elites
+        for i in range(self.eliteSize):
+            if self.fitness[i] < avgFitness: 
+                self.fitness[i] = 0
+            else:
+                self.fitness[i] -= avgFitness
+        
+        # RouletteWheel Selection based on assigned fitnesses
+        fitnessSum = np.sum(self.fitness)
+        for j in range(self.intermediatePopulation.shape[0]):
+            rand = np.random.uniform(low=0, high=fitnessSum)
+            partialSum = 0
+            for i in range(self.populationSize):
+                partialSum += self.fitness[i]
+                if partialSum > rand:
+                    self.intermediatePopulation[j] = self.population[i]
+        
 
     def recombination(self):
-        i = 0
+        i, j = 0, 0
+        if self.selectionMethod == R_SELECTION: j = self.eliteSize
         while i < self.intermediatePopulation.shape[0] - 1:
             if np.random.uniform() < self.crossoverRate:
-                self.population[i], self.population[i+1] = self.crossover(
+                self.population[j+i], self.population[j+i+1] = self.crossover(
                     parentA=self.intermediatePopulation[i],
                     parentB=self.intermediatePopulation[i+1]
                 )
             else:
-                self.population[i:i+2] = self.intermediatePopulation[i:i+2]
+                self.population[j+i:j+i+2] = self.intermediatePopulation[i:i+2]
             i += 2
         if i == self.intermediatePopulation.shape[0] - 1:
-            self.population[i:] = self.intermediatePopulation[i:]
+            self.population[j+i] = self.intermediatePopulation[i]
         
 
     def bestIndividualPlan(self, individual):
@@ -235,6 +278,13 @@ class UFLPGAProblem:
     @property
     def bestPlan(self):
         return self.bestIndividualPlan(self.bestIndividual)
+
+    @property
+    def bestIndividual(self):
+        if self.selectionMethod == R_SELECTION:
+            return self.population[0]
+        elif self.selectionMethod == T_SELECTION:
+            return self.bestIndividualT
 
     @property
     def score(self):

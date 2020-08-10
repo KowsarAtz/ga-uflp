@@ -18,7 +18,7 @@ facilityNodes = nodes[sampleIndices]
 customerNodes = nodes[[i for i in range(costMatrix.shape[1]) if i not in sampleIndices]]
 
 from UFLPGeneticProblem import UFLPGeneticProblem
-from UFLPGAProblem import UFLPGAProblem
+from UFLPGAProblem import UFLPGAProblem, R_SELECTION, T_SELECTION
 
 # ga = UFLPGeneticProblem(
 #     np.zeros((SAMPLES_NO, ), np.float64), #potentialSitesFixedCosts
@@ -48,7 +48,8 @@ ga = UFLPGAProblem(
     maxFacilities = 5,
     nRepeat = None,
     printProgress = True, 
-    selectionMethod = 'tournament'
+    selectionMethod = T_SELECTION
+    # selectionMethod = R_SELECTION
 )
 
 ga.run()

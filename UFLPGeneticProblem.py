@@ -66,7 +66,7 @@ class UFLPGeneticProblem:
         # GA Main Loop
         self.score = np.empty((self.populationSize, ))
         self.offspringsScore = np.empty((self.totalOffsprings, ))
-        self.rank = np.ones((self.populationSize, ))
+        self.fitness = np.ones((self.populationSize, ))
         self.fromPrevGeneration = np.zeros((self.populationSize, ), dtype=np.bool)
         self.bestIndividualScore = UFLPGeneticProblem.MAX_FLOAT
         self.bestIndividualRepeatedTime = 0
@@ -86,10 +86,10 @@ class UFLPGeneticProblem:
         cacheKey = individual.tobytes()
         if cacheKey in self.cache:
             return self.cache.peek(cacheKey)
-        openFacilites = np.where(individual == True)[0]
-        if openFacilites.shape[0] == 0: 
+        openFacilities = np.where(individual == True)[0]
+        if openFacilities.shape[0] == 0: 
             return UFLPGeneticProblem.MAX_FLOAT
-        score = np.sum(np.amin(self.facilityToCustomerCost[openFacilites, :], axis=0))
+        score = np.sum(np.amin(self.facilityToCustomerCost[openFacilities, :], axis=0))
         score += self.potentialSitesFixedCosts.dot(individual)
         if cached: self.cache[cacheKey] = score
         return score
@@ -151,11 +151,11 @@ class UFLPGeneticProblem:
         
         
     def rouletteWheelParentSelection(self):
-        rankSum = np.sum(self.rank)
-        rand = np.random.uniform(low=0, high=rankSum)
+        fitnessSum = np.sum(self.fitness)
+        rand = np.random.uniform(low=0, high=fitnessSum)
         partialSum = 0
         for individualIndex in range(self.populationSize):
-            partialSum += self.rank[individualIndex]
+            partialSum += self.fitness[individualIndex]
             if partialSum > rand:
                 return individualIndex
     
@@ -200,37 +200,37 @@ class UFLPGeneticProblem:
             offspringsIndex += 1
     
     def bestIndividualPlan(self, individualIndex=0):
-        openFacilites = np.where(self.population[individualIndex, :] == True)[0]
+        openFacilities = np.where(self.population[individualIndex, :] == True)[0]
         plan = []
         for customerIndex in range(self.totalCustomers):
-            openFacilityCosts = self.facilityToCustomerCost[openFacilites, customerIndex]
+            openFacilityCosts = self.facilityToCustomerCost[openFacilities, customerIndex]
             chosenFacilityIndex = np.where(openFacilityCosts == np.min(openFacilityCosts))[0][0]
-            plan += [openFacilites[chosenFacilityIndex]]
+            plan += [openFacilities[chosenFacilityIndex]]
         return plan
                 
     def punishElites(self):
-        averageRank = np.average(self.rank)
+        averageFitness = np.average(self.fitness)
         for individualIndex in range(self.populationSize):
             if self.fromPrevGeneration[individualIndex]:
-                if self.rank[individualIndex] > averageRank:
-                    self.rank[individualIndex] -= averageRank
+                if self.fitness[individualIndex] > averageFitness:
+                    self.fitness[individualIndex] -= averageFitness
                 else:
-                    self.rank[individualIndex] = 0
+                    self.fitness[individualIndex] = 0
         
     def identicalIndividuals(self, indexA, indexB):
         return False not in (self.population[indexA, :] == self.population[indexB, :])
         
-    def updateRank(self):
+    def updateFitness(self):
         self.duplicateIndices = np.zeros((self.populationSize, ), np.bool)
         currentRank = self.maxRank
-        self.rank[0] = currentRank
+        self.fitness[0] = currentRank
         for individualIndex in range(1,self.populationSize):
             currentRank -= self.rankStep
             if self.identicalIndividuals(individualIndex, individualIndex - 1):
-                self.rank[individualIndex] = 0
+                self.fitness[individualIndex] = 0
                 self.duplicateIndices[individualIndex] = True
             else:
-                self.rank[individualIndex] = currentRank    
+                self.fitness[individualIndex] = currentRank    
     
     def markElites(self):
         self.fromPrevGeneration = np.ones((self.populationSize, ), dtype=np.bool)
@@ -255,7 +255,7 @@ class UFLPGeneticProblem:
         while not self.finish():
             if self.printProgress:
                 print('\r' + self.problemTitle, 'generation number %d' % self.generation, end='', file=stdout)
-            self.updateRank()
+            self.updateFitness()
             self.punishElites()
             self.markElites()
             self.replaceWeaks()

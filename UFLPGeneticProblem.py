@@ -1,5 +1,6 @@
 import numpy as np
 from math import ceil
+from random import sample, randint
 from timeit import default_timer
 from pylru import lrucache
 from sys import stdout
@@ -19,6 +20,7 @@ class UFLPGeneticProblem:
         minRank = 0.712,
         maxGenerations = None,
         nRepeat = None,
+        maxFacilities = None,
         printProgress = False,
         problemTitle = 'noTitle'
     ):
@@ -35,6 +37,7 @@ class UFLPGeneticProblem:
         self.totalOffsprings = self.populationSize - self.eliteSize
         self.maxGenerations = maxGenerations
         self.mutationRate = mutationRate
+        self.maxFacilities = maxFacilities
         self.crossoverMaskRate = crossoverMaskRate
         
         # Cache
@@ -52,7 +55,12 @@ class UFLPGeneticProblem:
         self.rankStep = (maxRank - minRank) / (self.populationSize - 1)
 
         # Population Random Initialization
-        self.population = np.random.choice(a=[True, False], size=(self.populationSize, self.totalPotentialSites), p=[0.5, 0.5])
+        if maxFacilities == None:
+            self.population = np.random.choice(a=[True, False], size=(self.populationSize, self.totalPotentialSites), p=[0.5, 0.5])
+        else:
+            self.population = np.zeros((self.populationSize, self.totalPotentialSites), np.bool)
+            for i in range(self.populationSize):
+                self.population[i, sample(range(self.totalPotentialSites), maxFacilities)] = True
         self.offsprings = np.empty((self.totalOffsprings, self.totalPotentialSites))
         
         # GA Main Loop
@@ -60,7 +68,7 @@ class UFLPGeneticProblem:
         self.offspringsScore = np.empty((self.totalOffsprings, ))
         self.rank = np.ones((self.populationSize, ))
         self.fromPrevGeneration = np.zeros((self.populationSize, ), dtype=np.bool)
-        self.bestIndividual = UFLPGeneticProblem.MAX_FLOAT
+        self.bestIndividualScore = UFLPGeneticProblem.MAX_FLOAT
         self.bestIndividualRepeatedTime = 0
         self.duplicateIndices = np.zeros((self.populationSize, ), np.bool)
         self.nRepeat = nRepeat
@@ -110,6 +118,31 @@ class UFLPGeneticProblem:
             crossoverMask * parentA + crossoverMaskComplement * parentB,
             crossoverMask * parentB + crossoverMaskComplement * parentA
         )
+
+    def balancedCrossoverOffspring(self, indexA=None, indexB=None, parentA=None, parentB=None):
+        if indexA != None:
+            parentA = self.population[indexA,:]
+            parentB = self.population[indexB,:]
+        
+        offspringA = parentA * parentB
+        offspringB = offspringA.copy()
+        
+        diff = self.maxFacilities - np.sum(offspringA)
+        if diff <= 0: return offspringA, offspringB
+        
+        otherCandidates = parentA != parentB
+        otherCandidateIndices = list(np.where(otherCandidates == True)[0])
+        if len(otherCandidateIndices) == 0: return offspringA, offspringB
+        
+        newFacilitiesCount = randint(0, diff)
+        chosenIndices = sample(otherCandidateIndices, min(newFacilitiesCount, len(otherCandidateIndices)))
+        offspringA[chosenIndices] = True
+        
+        newFacilitiesCount = randint(0, diff)   
+        chosenIndices = sample(otherCandidateIndices, min(newFacilitiesCount, len(otherCandidateIndices)))
+        offspringB[chosenIndices] = True     
+        
+        return offspringA, offspringB
     
     def mutateOffsprings(self):      
         mutationRate = self.mutationRate
@@ -133,7 +166,7 @@ class UFLPGeneticProblem:
             parentIndexA = self.rouletteWheelParentSelection()
             parentIndexB = self.rouletteWheelParentSelection()
             while parentIndexA == parentIndexB : parentIndexB = self.rouletteWheelParentSelection() 
-            offspringA, offspringB = self.uniformCrossoverOffspring(parentIndexA, parentIndexB)
+            offspringA, offspringB = self.crossover(parentIndexA, parentIndexB)
             self.offsprings[individual, :] = offspringA
             self.offsprings[(individual + 1) % self.totalOffsprings, :] = offspringB
             individual += 2
@@ -210,6 +243,10 @@ class UFLPGeneticProblem:
         return False
 
     def run(self):
+        if self.maxFacilities == None:
+            self.crossover = self.uniformCrossoverOffspring
+        else:
+            self.crossover = self.balancedCrossoverOffspring
         
         # Start Timing
         startTimeit = default_timer()
@@ -223,10 +260,10 @@ class UFLPGeneticProblem:
             self.markElites()
             self.replaceWeaks()
             self.sortAll()
-            if self.score[0] != self.bestIndividual:
+            if self.score[0] != self.bestIndividualScore:
                 self.bestFoundElapsedTime = default_timer() - startTimeit
                 self.bestIndividualRepeatedTime = 0
-                self.bestIndividual = self.score[0]
+                self.bestIndividualScore = self.score[0]
             self.bestIndividualRepeatedTime += 1
             self.generation += 1
         self.bestPlan = self.bestIndividualPlan(0)

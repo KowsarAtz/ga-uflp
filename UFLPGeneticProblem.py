@@ -156,8 +156,6 @@ class UFLPGeneticProblem:
             if np.random.uniform() > self.chromosomeMutationRate:
                 continue
             
-            a = sum(self.offspring[i])
-
             falseIndices = np.where(self.offspring[i]==False)[0]
             chosenFalseIndex = sample(list(falseIndices), 1)
             self.offspring[i,chosenFalseIndex] = True
@@ -165,10 +163,6 @@ class UFLPGeneticProblem:
             trueIndices = np.where(self.offspring[i]==True)[0]
             chosenTrueIndex = sample(list(trueIndices), 1)
             self.offspring[i,chosenTrueIndex] = False
-            
-            b = sum(self.offspring[i])
-            if b != a:
-                print('hereeee3', sum(self.offspring[i]))
 
 
     def rouletteWheelParentSelection(self):

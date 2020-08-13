@@ -11,7 +11,8 @@ class UFLPGeneticProblem:
         self, 
         potentialSitesFixedCosts,
         facilityToCustomerCost,
-        mutationRate = 0.01,
+        geneMutationRate = 0.01,
+        chromosomeMutationRate = 0.4,
         crossoverMaskRate = 0.4,
         eliteFraction = 1/3,
         populationSize = 150,
@@ -36,7 +37,8 @@ class UFLPGeneticProblem:
         self.eliteSize = ceil(eliteFraction * self.populationSize)
         self.totalOffspring = self.populationSize - self.eliteSize
         self.maxGenerations = maxGenerations
-        self.mutationRate = mutationRate
+        self.geneMutationRate = geneMutationRate
+        self.chromosomeMutationRate = chromosomeMutationRate
         self.maxFacilities = maxFacilities
         self.crossoverMaskRate = crossoverMaskRate
         
@@ -145,12 +147,29 @@ class UFLPGeneticProblem:
         return offspringA, offspringB
     
     def defaultMutateOffspring(self):      
-        mutationRate = self.mutationRate
-        mask =  np.random.choice(a=[True, False], size=(self.totalOffspring, self.totalPotentialSites), p=[mutationRate, 1-mutationRate])
+        r = self.geneMutationRate
+        mask =  np.random.choice(a=[True, False], size=(self.totalOffspring, self.totalPotentialSites), p=[r, 1-r])
         self.offspring = self.offspring != mask
         
     def balancedMutateOffspring(self):
-        pass
+        for i in range(self.totalOffspring):
+            if np.random.uniform() > self.chromosomeMutationRate:
+                continue
+            
+            a = sum(self.offspring[i])
+
+            falseIndices = np.where(self.offspring[i]==False)[0]
+            chosenFalseIndex = sample(list(falseIndices), 1)
+            self.offspring[i,chosenFalseIndex] = True
+            
+            trueIndices = np.where(self.offspring[i]==True)[0]
+            chosenTrueIndex = sample(list(trueIndices), 1)
+            self.offspring[i,chosenTrueIndex] = False
+            
+            b = sum(self.offspring[i])
+            if b != a:
+                print('hereeee3', sum(self.offspring[i]))
+
 
     def rouletteWheelParentSelection(self):
         fitnessSum = np.sum(self.fitness)
